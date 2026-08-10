@@ -15,6 +15,7 @@ from bson import ObjectId
 
 from apps.common.base.base_repository import BaseRepository
 from apps.common.core.collections import Collections
+from pymongo import ReturnDocument
 
 
 class OTPRepository(BaseRepository):
@@ -47,6 +48,26 @@ class OTPRepository(BaseRepository):
                 "is_used": False,
                 "expires_at": {"$gt": datetime.now(timezone.utc)},
             }
+        )
+
+    def claim_active_otp(self, email: str, purpose: str, otp_hash: str):
+        """
+        Atomically find and mark an active OTP as used.
+
+        Returns the original OTP document if it was found and claimed,
+        otherwise returns None. This prevents a race where multiple
+        verifiers read the same active OTP and both succeed.
+        """
+        return self.collection.find_one_and_update(
+            {
+                "email": email.lower(),
+                "purpose": purpose,
+                "otp_hash": otp_hash,
+                "is_used": False,
+                "expires_at": {"$gt": datetime.now(timezone.utc)},
+            },
+            {"$set": {"is_used": True}},
+            return_document=ReturnDocument.BEFORE,
         )
 
     def mark_used(self, otp_id: str) -> bool:

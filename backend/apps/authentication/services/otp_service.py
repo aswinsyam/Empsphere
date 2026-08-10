@@ -78,14 +78,16 @@ class VerifyOTPService(BaseService):
         """
         otp_hash = self.otp_manager.hash_otp(dto.otp)
 
-        otp_doc = self.otp_repository.get_active(
+        # Atomically claim the active OTP (mark is_used=True) and
+        # return the original document. This avoids a race where two
+        # concurrent verifications could both read the OTP as active
+        # and both succeed.
+        otp_doc = self.otp_repository.claim_active_otp(
             dto.email, dto.purpose, otp_hash
         )
 
         if not otp_doc:
             raise UnauthorizedException("Invalid or expired OTP.")
-
-        self.otp_repository.mark_used(str(otp_doc["_id"]))
 
         if dto.purpose == "email_verification":
             user = self.user_repository.get_by_email(dto.email)

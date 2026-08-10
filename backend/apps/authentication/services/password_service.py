@@ -163,14 +163,13 @@ class SetPasswordService:
         # Verify the OTP for this user's verified email.
         otp_hash = self.otp_manager.hash_otp(dto.otp)
 
-        otp_doc = self.otp_repository.get_active(
+        # Atomically claim the OTP to prevent race conditions.
+        otp_doc = self.otp_repository.claim_active_otp(
             user.get("email"), "password_setup", otp_hash
         )
 
         if not otp_doc:
             raise UnauthorizedException("Invalid or expired OTP.")
-
-        self.otp_repository.mark_used(str(otp_doc["_id"]))
 
         hashed = self.password_manager.hash_password(dto.new_password)
 
