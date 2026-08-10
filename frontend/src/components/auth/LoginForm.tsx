@@ -40,7 +40,7 @@ interface WindowWithGoogle extends Window {
 type LoginTab = "password" | "otp" | "google";
 
 export function LoginForm() {
-  const { login, googleLogin, loading } = useAuth();
+  const { login, googleLogin, loading, fetchMe } = useAuth();
   const navigate = useNavigate();
   const googleButtonContainerRef = useRef<HTMLDivElement>(null);
 
@@ -102,7 +102,15 @@ export function LoginForm() {
       // Persist tokens so the app recognizes the authenticated session
       if (result?.access_token && result?.refresh_token) {
         TokenUtil.setTokens(result.access_token, result.refresh_token);
+
+        // Populate redux auth state so protected routes allow navigation
+        try {
+          await fetchMe();
+        } catch (e) {
+          // Ignore; we'll still navigate based on returned role
+        }
       }
+
       const role = (result as { role?: string }).role;
       navigate(getDashboardRoute(role), { replace: true });
     } catch (err) {
