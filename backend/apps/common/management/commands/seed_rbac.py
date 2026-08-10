@@ -45,7 +45,7 @@ from apps.common.core.permissions import (
     PERM_NOTIFICATION_SEND,
 )
 from apps.common.database.mongo import mongo
-from apps.authentication.managers.password_manager import PasswordManager
+from apps.common.security.password_manager import PasswordManager
 
 ALL_PERMISSIONS = [
     PERM_LOGIN,

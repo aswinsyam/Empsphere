@@ -8,7 +8,7 @@ send-otp (email verification / password reset / password setup / login) and veri
 from datetime import datetime, timezone
 
 from apps.authentication.dtos.otp_dto import SendOTPDTO, VerifyOTPDTO
-from apps.authentication.managers.jwt_manager import JWTManager
+from apps.common.security.jwt_manager import JWTManager
 from apps.authentication.managers.otp_manager import OTPManager
 from apps.authentication.repositories.otp_repository import OTPRepository
 from apps.authentication.repositories.user_repository import UserRepository

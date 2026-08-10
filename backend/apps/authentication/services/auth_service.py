@@ -15,8 +15,8 @@ from apps.authentication.dtos.auth_dto import (
     UpdateProfileDTO,
 )
 from apps.authentication.managers.employee_code_manager import EmployeeCodeManager
-from apps.authentication.managers.jwt_manager import JWTManager
-from apps.authentication.managers.password_manager import PasswordManager
+from apps.common.security.jwt_manager import JWTManager
+from apps.common.security.password_manager import PasswordManager
 from apps.authentication.managers.token_blacklist_manager import TokenBlacklistManager
 from apps.authentication.repositories.user_repository import UserRepository
 from apps.authentication.schemas.user_schema import UserSchema

@@ -7,7 +7,7 @@ Consolidated business logic for user administration
 
 from apps.authentication.dtos.user_dto import CreateUserDTO
 from apps.authentication.managers.employee_code_manager import EmployeeCodeManager
-from apps.authentication.managers.password_manager import PasswordManager
+from apps.common.security.password_manager import PasswordManager
 from apps.authentication.repositories.user_repository import UserRepository
 from apps.authentication.schemas.user_schema import UserSchema
 from apps.authentication.validators.user_validator import validate_target_role

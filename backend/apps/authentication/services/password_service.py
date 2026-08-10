@@ -16,7 +16,7 @@ from apps.authentication.dtos.password_dto import (
 )
 from apps.authentication.managers.email_manager import EmailManager
 from apps.authentication.managers.otp_manager import OTPManager
-from apps.authentication.managers.password_manager import PasswordManager
+from apps.common.security.password_manager import PasswordManager
 from apps.authentication.repositories.otp_repository import OTPRepository
 from apps.authentication.repositories.user_repository import UserRepository
 from apps.common.config.settings import settings
