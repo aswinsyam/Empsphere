@@ -10,6 +10,7 @@ import { authService } from "@/services/auth.service";
 import { Button } from "@/components/common/Button";
 import { Input } from "@/components/common/Input";
 import { getErrorMessage } from "@/utils/helpers";
+import { TokenUtil } from "@/utils/token";
 import { getDashboardRoute } from "@/utils/constants";
 import { ENV } from "@/config/env";
 
@@ -98,6 +99,10 @@ export function LoginForm() {
     setOtpSubmitting(true);
     try {
       const result = await authService.loginWithOtp(otpEmail, otp);
+      // Persist tokens so the app recognizes the authenticated session
+      if (result?.access_token && result?.refresh_token) {
+        TokenUtil.setTokens(result.access_token, result.refresh_token);
+      }
       const role = (result as { role?: string }).role;
       navigate(getDashboardRoute(role), { replace: true });
     } catch (err) {
