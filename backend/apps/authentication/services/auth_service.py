@@ -4,12 +4,14 @@ Handles authentication business logic.
 """
 from __future__ import annotations
 
+import jwt
 from datetime import datetime
 
 from apps.authentication.repositories.user_repository import UserRepository
 from apps.authentication.managers.employee_code_manager import EmployeeCodeManager
 from apps.authentication.managers.token_blacklist_manager import TokenBlacklistManager
 from apps.authentication.services.otp_service import OTPService
+from apps.common.config.settings import settings
 from apps.common.security.password_manager import PasswordManager
 from apps.common.security.google_manager import GoogleManager
 from apps.common.base.base_service import BaseService
@@ -80,8 +82,6 @@ class AuthService(BaseService):
 
     def verify_email(self, token):
         """Verify email with token."""
-        import jwt
-        from apps.common.config.settings import settings
         try:
             payload = jwt.decode(
                 token,
@@ -141,8 +141,6 @@ class AuthService(BaseService):
 
     def refresh_token(self, refresh_token):
         """Refresh access token."""
-        import jwt
-        from apps.common.config.settings import settings
         try:
             payload = jwt.decode(refresh_token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
         except Exception:
@@ -160,8 +158,6 @@ class AuthService(BaseService):
 
     def _generate_access_token(self, user):
         """Generate access token."""
-        import jwt
-        from apps.common.config.settings import settings
         return jwt.encode(
             {
                 "user_id": str(user["_id"]),
@@ -175,8 +171,6 @@ class AuthService(BaseService):
 
     def _generate_refresh_token(self, user):
         """Generate refresh token."""
-        import jwt
-        from apps.common.config.settings import settings
         return jwt.encode(
             {
                 "user_id": str(user["_id"]),
