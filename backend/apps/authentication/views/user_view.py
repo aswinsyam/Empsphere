@@ -54,5 +54,4 @@ class UserView(APIView):
             message="Validation error",
             errors=serializer.errors,
             status_code=status.HTTP_400_BAD_REQUEST,
-                )
-</tool_call>
+        )

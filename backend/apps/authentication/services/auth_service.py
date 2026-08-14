@@ -7,9 +7,9 @@ from __future__ import annotations
 from datetime import datetime
 
 from apps.authentication.repositories.user_repository import UserRepository
-from apps.authentication.managers.otp_manager import OTPManager
 from apps.authentication.managers.employee_code_manager import EmployeeCodeManager
 from apps.authentication.managers.token_blacklist_manager import TokenBlacklistManager
+from apps.authentication.services.otp_service import OTPService
 from apps.common.security.password_manager import PasswordManager
 from apps.common.security.google_manager import GoogleManager
 from apps.common.base.base_service import BaseService
@@ -25,7 +25,7 @@ class AuthService(BaseService):
     def __init__(self):
         super().__init__()
         self.user_repository = UserRepository()
-        self.otp_manager = OTPManager()
+        self.otp_service = OTPService()
         self.employee_code_manager = EmployeeCodeManager()
         self.token_blacklist_manager = TokenBlacklistManager()
         self.password_manager = PasswordManager()
@@ -33,35 +33,39 @@ class AuthService(BaseService):
 
     def register(self, dto):
         """Register a new user."""
-        normalized_email = dto.email.strip().lower()
-        if self.user_repository.email_exists(normalized_email):
+        email = (dto.get("email") or "").strip().lower()
+        if self.user_repository.email_exists(email):
             raise ConflictException("Email already exists.")
         employee_code = self.employee_code_manager.generate()
-        hashed_password = self.password_manager.hash_password(dto.password)
+        hashed_password = self.password_manager.hash_password(dto.get("password", ""))
+        first_name = (dto.get("first_name") or "").strip()
+        last_name = (dto.get("last_name") or "").strip()
         document = {
             "employee_code": employee_code,
-            "first_name": dto.first_name,
-            "last_name": dto.last_name,
-            "full_name": dto.full_name,
-            "email": normalized_email,
-            "phone": dto.phone,
+            "first_name": first_name,
+            "last_name": last_name,
+            "full_name": f"{first_name} {last_name}".strip() or None,
+            "email": email,
+            "phone": (dto.get("phone") or "").strip(),
             "password": hashed_password,
             "role": "EMPLOYEE",
-            "department_id": dto.department_id,
-            "designation_id": dto.designation_id,
-            "created_by": dto.created_by,
+            "department_id": dto.get("department_id"),
+            "designation_id": dto.get("designation_id"),
+            "created_by": dto.get("created_by"),
         }
-        return self.user_repository.create(document, user_id=dto.created_by)
+        return self.user_repository.create(document, user_id=dto.get("created_by"))
 
     def login(self, dto):
         """Authenticate user and return tokens."""
-        user = self.user_repository.get_by_email(dto.email)
+        email = (dto.get("email") or "").strip().lower()
+        password = dto.get("password") or ""
+        user = self.user_repository.get_by_email(email)
         if not user or not self.password_manager.verify_password(
-            dto.password, user.get("password")
+            password, user.get("password")
         ):
             raise UnauthorizedException("Invalid email or password.")
         if not user.get("is_email_verified"):
-            self.otp_manager.create_and_send(user.get("email"), "email_verification")
+            self.otp_service.send_otp({"email": user.get("email"), "purpose": "email_verification"})
             return {"requires_otp": True, "email": user.get("email")}
         access_token = self._generate_access_token(user)
         refresh_token = self._generate_refresh_token(user)
@@ -95,7 +99,7 @@ class AuthService(BaseService):
 
     def google_login(self, dto):
         """Login with Google credentials."""
-        info = self.google_manager.verify_id_token(dto.id_token)
+        info = self.google_manager.verify_id_token(dto.get("id_token") or "")
         if not info:
             raise UnauthorizedException("Invalid Google token.")
         google_user = self.google_manager.extract_user_info(info)

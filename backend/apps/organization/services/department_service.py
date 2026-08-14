@@ -4,9 +4,9 @@ Handles department business logic.
 """
 from __future__ import annotations
 
+from apps.common.exceptions.custom_exception import NotFoundException
 from apps.organization.repositories.department_repository import DepartmentRepository
 from apps.organization.dtos.department_dto import DepartmentDTO, DepartmentUpdateDTO
-from apps.organization.schemas.department_schema import DepartmentSchema
 from apps.organization.validators.department_validator import DepartmentValidator
 
 
@@ -20,13 +20,13 @@ class DepartmentService:
     def create_department(self, dto):
         """Create a new department."""
         self.validator.validate_create(dto.name, dto.code)
-        document = DepartmentSchema.create_document({
+        document = {
             "name": dto.name,
             "code": dto.code,
             "description": dto.description,
             "head_user_id": dto.head_user_id,
             "organization_id": dto.organization_id,
-        })
+        }
         return self.repository.create(document, user_id=dto.created_by)
 
     def get_department(self, department_id):

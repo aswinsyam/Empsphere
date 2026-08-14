@@ -37,5 +37,5 @@ class PasswordService(BaseService):
             raise UnauthorizedException("Current password is incorrect.")
         hashed = self.password_manager.hash_password(dto.get("new_password"))
         return self.user_repository.update(
-            dto["user_id"], {"password": hashed}, user_id=dto["user_id"]
+            dto.get("user_id"), {"password": hashed}
         )

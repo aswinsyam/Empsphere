@@ -3,16 +3,15 @@ import threading
 import time
 import os
 
-from apps.authentication.managers.otp_manager import OTPManager
 from apps.authentication.services.otp_service import OTPService
 from apps.authentication.dtos.otp_dto import VerifyOTPDTO
+from apps.authentication.repositories.otp_repository import OTPRepository
 from apps.authentication.repositories.user_repository import UserRepository
 
 
 class ConcurrentOTPTest(TestCase):
     def setUp(self):
         self.email = os.getenv('TEST_OTP_EMAIL', 'test-otp@empsphere.local')
-        # create a user document directly in MongoDB so repositories can find it
         self.user_repo = UserRepository()
         user_data = {
             'email': self.email.lower(),
@@ -24,15 +23,17 @@ class ConcurrentOTPTest(TestCase):
         self.user = self.user_repo.get_by_email(self.email)
 
     def test_concurrent_otp_verify_only_one_succeeds(self):
-        otp = OTPManager().create_and_send(self.email, 'email_verification')
-        otp_value = otp['otp_code']
+        otp_service = OTPService()
+        otp_service.send_otp({"email": self.email, "purpose": "email_verification"})
+        otp_record = OTPRepository().get_active(self.email, "email_verification")
+        otp_value = otp_record["otp"]
 
         results = []
         lock = threading.Lock()
 
         def worker(idx, otp_value):
             svc = OTPService()
-            dto = VerifyOTPDTO(self.email, otp_value, 'email_verification')
+            dto = VerifyOTPDTO(self.email, otp_value, "email_verification")
             try:
                 res = svc.verify_otp(dto)
                 with lock:

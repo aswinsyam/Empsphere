@@ -4,6 +4,8 @@ Handles OTP database operations.
 """
 from __future__ import annotations
 
+from bson import ObjectId
+
 from apps.common.database.mongo import mongo
 from apps.common.core.collections import Collections
 
@@ -23,12 +25,13 @@ class OTPRepository:
     def create(self, document):
         """Create a new OTP record."""
         collection = mongo.get_collection(Collections.OTPS)
-        return collection.insert_one(document).inserted_id
+        result = collection.insert_one(document)
+        return str(result.inserted_id)
 
     def mark_used(self, otp_id):
         """Mark OTP as used."""
         collection = mongo.get_collection(Collections.OTPS)
-        collection.update_one({"_id": otp_id}, {"$set": {"is_used": True}})
+        collection.update_one({"_id": ObjectId(otp_id)}, {"$set": {"is_used": True}})
 
     def invalidate_active(self, email, purpose):
         """Invalidate existing active OTPs."""

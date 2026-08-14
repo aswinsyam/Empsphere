@@ -3,8 +3,10 @@ User Schema.
 MongoDB schema definitions for user.
 """
 from __future__ import annotations
-import jwt
+
+from bson import ObjectId
 from datetime import datetime
+
 from apps.common.config.settings import settings
 from apps.common.core.collections import Collections
 from apps.common.database.mongo import mongo
@@ -23,7 +25,7 @@ class UserSchema:
     def get_by_id(user_id):
         """Get user by ID."""
         collection = mongo.get_collection(Collections.USERS)
-        return collection.find_one({"_id": user_id})
+        return collection.find_one({"_id": ObjectId(user_id)})
 
     @staticmethod
     def get_by_google_id(google_id):
@@ -45,19 +47,19 @@ class UserSchema:
         document["created_at"] = datetime.utcnow()
         document["updated_at"] = datetime.utcnow()
         result = collection.insert_one(document)
-        return result.inserted_id
+        return str(result.inserted_id)
 
     @staticmethod
     def update(user_id, updates):
         """Update user document."""
         collection = mongo.get_collection(Collections.USERS)
         updates["updated_at"] = datetime.utcnow()
-        return collection.update_one({"_id": user_id}, {"$set": updates})
+        return collection.update_one({"_id": ObjectId(user_id)}, {"$set": updates})
 
     @staticmethod
     def soft_delete(user_id):
         """Soft delete user."""
         collection = mongo.get_collection(Collections.USERS)
         return collection.update_one(
-            {"_id": user_id}, {"$set": {"is_active": False}}
+            {"_id": ObjectId(user_id)}, {"$set": {"is_active": False}}
         )

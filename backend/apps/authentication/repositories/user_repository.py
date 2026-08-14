@@ -30,7 +30,7 @@ class UserRepository:
         """Get all users."""
         return UserSchema.get_all()
 
-    def create(self, document, user_id):
+    def create(self, document, user_id=None):
         """Create a new user document."""
         return UserSchema.create(document, user_id=user_id)
 
