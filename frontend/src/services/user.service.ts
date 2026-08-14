@@ -31,7 +31,7 @@ export const userService = {
     const formData = new FormData();
     formData.append("profile_image", file);
     const res = await api.post<ApiResponse<UserProfile>>(
-      "/auth/profile/upload-image/",
+      "/auth/profile/",
       formData
     );
     return res.data.data;
@@ -50,6 +50,6 @@ export const userService = {
 
   /** Create a new user (Admin/HR/Employee) with role-based permission. */
   async createUser(payload: CreateUserPayload): Promise<{ user_id: string }> {
-    return http.post<{ user_id: string }>("/auth/create-user/", payload);
+    return http.post<{ user_id: string }>("/auth/users/create/", payload);
   },
 };

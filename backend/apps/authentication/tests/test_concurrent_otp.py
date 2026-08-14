@@ -24,14 +24,14 @@ class ConcurrentOTPTest(TestCase):
         self.user = self.user_repo.get_by_email(self.email)
 
     def test_concurrent_otp_verify_only_one_succeeds(self):
-        otp = OTPManager().create_and_send(self.email, 'login')
+        otp = OTPManager().create_and_send(self.email, 'email_verification')
 
         results = []
         lock = threading.Lock()
 
         def worker(idx, otp_value):
             svc = VerifyOTPService()
-            dto = VerifyOTPDTO(self.email, otp_value, 'login')
+            dto = VerifyOTPDTO(self.email, otp_value, 'email_verification')
             try:
                 res = svc.verify(dto)
                 with lock:

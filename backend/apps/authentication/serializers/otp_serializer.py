@@ -1,37 +1,21 @@
 """
-OTP Serializers.
-
-DRF serializers for one-time password flows
-(email verification and password reset).
+OTP Serializer.
+DRF serializers for OTP.
 """
-
+from __future__ import annotations
 from rest_framework import serializers
-
-from apps.authentication.validators.email_validator import validate_email
 
 
 class SendOTPSerializer(serializers.Serializer):
-    """Validates a request to send an OTP to an email."""
+    """Send OTP serializer."""
 
-    email = serializers.EmailField(required=True)
-    purpose = serializers.ChoiceField(
-        choices=["email_verification", "password_reset", "password_setup", "login"],
-        default="email_verification",
-    )
-
-    def validate_email(self, value):
-        return validate_email(value)
+    email = serializers.EmailField()
+    purpose = serializers.CharField(max_length=50, default="email_verification")
 
 
 class VerifyOTPSerializer(serializers.Serializer):
-    """Validates a request to verify an OTP."""
+    """Verify OTP serializer."""
 
-    email = serializers.EmailField(required=True)
-    otp = serializers.CharField(required=True, min_length=6, max_length=6)
-    purpose = serializers.ChoiceField(
-        choices=["email_verification", "password_reset", "password_setup", "login"],
-        default="email_verification",
-    )
-
-    def validate_email(self, value):
-        return validate_email(value)
+    email = serializers.EmailField()
+    otp = serializers.CharField(max_length=6)
+    purpose = serializers.CharField(max_length=50, default="email_verification")

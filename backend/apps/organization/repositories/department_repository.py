@@ -1,47 +1,47 @@
 """
 Department Repository.
-
-Contains department-specific database operations.
+Handles department database operations.
 """
-
 from __future__ import annotations
 
-from bson import ObjectId
-
-from apps.common.base.base_repository import BaseRepository
-from apps.common.core.collections import Collections
+from apps.organization.schemas.department_schema import DepartmentSchema
 
 
-class DepartmentRepository(BaseRepository):
-    """
-    Repository for the departments collection.
-    """
+class DepartmentRepository:
+    """Department data access layer."""
 
-    COLLECTION_NAME = Collections.DEPARTMENTS
+    def create(self, document, user_id):
+        """Create a new department."""
+        from apps.common.database.mongo import mongo
+        collection = mongo.get_collection(Collections.DEPARTMENTS)
+        document["is_active"] = True
+        document["created_at"] = datetime.utcnow()
+        document["updated_at"] = datetime.utcnow()
+        return collection.insert_one(document).inserted_id
 
-    def __init__(self):
-        super().__init__(self.COLLECTION_NAME)
+    def get_by_id(self, department_id):
+        """Get department by ID."""
+        from apps.common.database.mongo import mongo
+        collection = mongo.get_collection(Collections.DEPARTMENTS)
+        return collection.find_one({"_id": department_id})
 
-    def name_exists(self, name: str, exclude_id: str | None = None) -> bool:
-        """
-        Check whether a department name already exists.
-        """
-        filters = {"name": name.strip()}
-        if exclude_id:
-            filters["_id"] = {"$ne": ObjectId(exclude_id)}
-        return self.exists(filters)
+    def get_all(self):
+        """Get all departments."""
+        from apps.common.database.mongo import mongo
+        collection = mongo.get_collection(Collections.DEPARTMENTS)
+        return list(collection.find())
 
-    def code_exists(self, code: str, exclude_id: str | None = None) -> bool:
-        """
-        Check whether a department code already exists.
-        """
-        filters = {"code": code.strip().upper()}
-        if exclude_id:
-            filters["_id"] = {"$ne": ObjectId(exclude_id)}
-        return self.exists(filters)
+    def update(self, department_id, updates, user_id):
+        """Update a department."""
+        from apps.common.database.mongo import mongo
+        collection = mongo.get_collection(Collections.DEPARTMENTS)
+        updates["updated_at"] = datetime.utcnow()
+        return collection.update_one({"_id": department_id}, {"$set": updates})
 
-    def get_by_code(self, code: str):
-        """
-        Get a department by its code.
-        """
-        return self.get_one({"code": code.strip().upper()})
+    def soft_delete(self, department_id, user_id):
+        """Soft delete a department."""
+        from apps.common.database.mongo import mongo
+        collection = mongo.get_collection(Collections.DEPARTMENTS)
+        return collection.update_one(
+            {"_id": department_id}, {"$set": {"is_active": False}}
+        )

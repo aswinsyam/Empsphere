@@ -19,13 +19,20 @@ export interface User {
   login_provider?: string;
 }
 
-/** Payload returned after a successful login. */
+/**
+ * Payload returned after a login attempt.
+ *
+ * When the user's email is not yet verified, the backend responds with
+ * `requires_otp: true` and no tokens. Otherwise, the full token payload
+ * is returned.
+ */
 export interface LoginResult {
-  user_id: string;
+  user_id?: string;
   email: string;
-  role: string;
-  access_token: string;
-  refresh_token: string;
+  role?: string;
+  access_token?: string;
+  refresh_token?: string;
+  requires_otp?: boolean;
 }
 
 /** Payload returned after a successful registration. */
@@ -103,21 +110,12 @@ export interface CreateUserPayload {
 /** Send OTP request body. */
 export interface SendOTPPayload {
   email?: string;
-  purpose?: "email_verification" | "password_reset" | "password_setup" | "login";
+  purpose?: "email_verification" | "password_reset" | "password_setup";
 }
 
 /** Verify OTP request body. */
 export interface VerifyOTPPayload {
   email: string;
   otp: string;
-  purpose?: "email_verification" | "password_reset" | "password_setup" | "login";
-}
-
-/** Result returned when OTP login is successful. */
-export interface LoginOTPResult {
-  user_id: string;
-  email: string;
-  role: string;
-  access_token: string;
-  refresh_token: string;
+  purpose?: "email_verification" | "password_reset" | "password_setup";
 }

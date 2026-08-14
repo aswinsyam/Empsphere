@@ -1,27 +1,22 @@
 """
 OTP DTOs.
-
-Data transfer objects for one-time password flows
-(email verification and password reset).
+Data transfer objects for OTP.
 """
-
 from __future__ import annotations
 
-from dataclasses import dataclass
 
-
-@dataclass
 class SendOTPDTO:
-    """Represents a request to send an OTP to an email."""
+    """Send OTP data transfer object."""
 
-    email: str
-    purpose: str = "email_verification"
+    def __init__(self, email, purpose="email_verification"):
+        self.email = email
+        self.purpose = purpose
 
 
-@dataclass
 class VerifyOTPDTO:
-    """Represents a request to verify an OTP."""
+    """Verify OTP data transfer object."""
 
-    email: str
-    otp: str
-    purpose: str = "email_verification"
+    def __init__(self, email, otp, purpose="email_verification"):
+        self.email = email
+        self.otp = otp
+        self.purpose = purpose

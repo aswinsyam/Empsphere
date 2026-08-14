@@ -1,9 +1,7 @@
 """
-Audit service.
-
-Records audit log entries to the activity_logs collection.
+Audit Service.
+Records audit log entries.
 """
-
 from __future__ import annotations
 
 from apps.common.database.mongo import mongo
@@ -16,26 +14,16 @@ class AuditService:
     def __init__(self):
         self.collection = mongo.get_collection(Collections.ACTIVITY_LOGS)
 
-    def log(
-        self,
-        module: str,
-        action: str,
-        performed_by: str,
-        target_id: str,
-        status: str,
-        description: str,
-        metadata: dict | None = None,
-    ) -> None:
+    def log(self, module, action, performed_by, target_id, status, description, metadata=None):
         """Insert an audit log document."""
-        self.collection.insert_one(
-            {
-                "module": module,
-                "action": action,
-                "performed_by": performed_by,
-                "target_id": target_id,
-                "status": status,
-                "description": description,
-                "metadata": metadata or {},
-                "created_at": __import__("datetime").datetime.utcnow(),
-            }
-        )
+        from datetime import datetime
+        self.collection.insert_one({
+            "module": module,
+            "action": action,
+            "performed_by": performed_by,
+            "target_id": target_id,
+            "status": status,
+            "description": description,
+            "metadata": metadata or {},
+            "created_at": datetime.utcnow(),
+        })

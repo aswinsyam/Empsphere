@@ -1,74 +1,38 @@
 """
 Authentication DTOs.
-
-Consolidated data transfer objects for core authentication flows:
-register, login, and google-login.
+Data transfer objects for authentication.
 """
-
 from __future__ import annotations
 
-from dataclasses import dataclass
 
-
-# ==========================================================
-# Register
-# ==========================================================
-
-@dataclass
 class RegisterDTO:
-    """Represents registration data passed to the service layer."""
+    """Registration data transfer object."""
 
-    first_name: str
-    last_name: str
-    full_name: str
-
-    email: str
-    phone: str
-
-    password: str
-    confirm_password: str | None = None
-
-    company_secret: str | None = None
-    role: str = "ADMIN"
-
-    department_id: str | None = None
-    designation_id: str | None = None
-
-    created_by: str | None = None
+    def __init__(self, first_name, last_name, email, password,
+                 confirm_password, company_secret, phone=None,
+                 department_id=None, designation_id=None, created_by=None):
+        self.first_name = first_name
+        self.last_name = last_name
+        self.email = email
+        self.password = password
+        self.confirm_password = confirm_password
+        self.company_secret = company_secret
+        self.phone = phone
+        self.department_id = department_id
+        self.designation_id = designation_id
+        self.created_by = created_by
 
 
-# ==========================================================
-# Login
-# ==========================================================
-
-@dataclass
 class LoginDTO:
-    """Represents login credentials."""
+    """Login data transfer object."""
 
-    email: str
-    password: str
+    def __init__(self, email, password):
+        self.email = email
+        self.password = password
 
 
-# ==========================================================
-# Google Login
-# ==========================================================
-
-@dataclass
 class GoogleLoginDTO:
-    """Represents a Google OAuth2 login."""
+    """Google login data transfer object."""
 
-    id_token: str
-
-
-# ==========================================================
-# Profile Update
-# ==========================================================
-
-@dataclass
-class UpdateProfileDTO:
-    """Represents editable profile fields for the current user."""
-
-    user_id: str
-    first_name: str | None = None
-    last_name: str | None = None
-    phone: str | None = None
+    def __init__(self, id_token):
+        self.id_token = id_token

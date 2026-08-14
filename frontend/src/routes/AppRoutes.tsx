@@ -35,6 +35,7 @@ export function AppRoutes() {
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/verify-otp" element={<VerifyEmailPage />} />
 
       {/* Protected routes */}
       <Route element={<ProtectedRoute />}>

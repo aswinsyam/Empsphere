@@ -1,16 +1,18 @@
 """
-Email validation helpers.
+Email Validator.
+Email validation logic.
 """
+from __future__ import annotations
 
-from apps.common.core.regex import is_valid_email
 from apps.common.exceptions.custom_exception import ValidationException
 
 
-def validate_email(value: str) -> str:
-    """Validate and normalize an email address."""
-    value = (value or "").strip().lower()
+class EmailValidator:
+    """Email validation logic."""
 
-    if not is_valid_email(value):
-        raise ValidationException("Please provide a valid email address.")
-
-    return value
+    @staticmethod
+    def validate_email_format(email):
+        """Validate email format."""
+        if not email or "@" not in email:
+            raise ValidationException("Valid email address is required.")
+        return email.strip().lower()

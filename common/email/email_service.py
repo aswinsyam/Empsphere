@@ -1,19 +1,15 @@
 """
-Email Manager.
-Handles email sending.
+Common Email Service.
+Handles email sending across the application.
 """
 from __future__ import annotations
 
 import smtplib
 from email.message import EmailMessage
-from apps.common.base.base_manager import BaseManager
 
 
-class EmailManager(BaseManager):
+class EmailService:
     """Email sending logic."""
-
-    def __init__(self):
-        super().__init__()
 
     def send(self, dto):
         """Send email."""

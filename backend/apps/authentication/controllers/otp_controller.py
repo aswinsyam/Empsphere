@@ -84,14 +84,7 @@ class VerifyOTPController(APIView, BaseController):
 
         dto = VerifyOTPDTO(**data)
 
-        result = self.verify_otp_service.verify(dto)
-
-        if data.get("purpose") == "login" and result:
-            return self.success(
-                message="Login successful.",
-                data=result,
-                status_code=status.HTTP_200_OK,
-            )
+        self.verify_otp_service.verify(dto)
 
         return self.success(
             message="OTP verified successfully.",

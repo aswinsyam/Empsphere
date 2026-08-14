@@ -1,29 +1,31 @@
 """
-Department DTO.
-
-Represents department data passed to the service layer.
+Department DTOs.
+Data transfer objects for department.
 """
-
 from __future__ import annotations
 
-from dataclasses import dataclass
 
-
-@dataclass
 class DepartmentDTO:
-    name: str
-    code: str
-    description: str | None = None
-    head_user_id: str | None = None
-    organization_id: str | None = None
-    created_by: str | None = None
+    """Department data transfer object."""
+
+    def __init__(self, name, code, description=None, head_user_id=None,
+                 organization_id=None, created_by=None):
+        self.name = name
+        self.code = code
+        self.description = description
+        self.head_user_id = head_user_id
+        self.organization_id = organization_id
+        self.created_by = created_by
 
 
-@dataclass
 class DepartmentUpdateDTO:
-    name: str | None = None
-    code: str | None = None
-    description: str | None = None
-    head_user_id: str | None = None
-    organization_id: str | None = None
-    updated_by: str | None = None
+    """Department update data transfer object."""
+
+    def __init__(self, name=None, code=None, description=None,
+                 head_user_id=None, organization_id=None, updated_by=None):
+        self.name = name
+        self.code = code
+        self.description = description
+        self.head_user_id = head_user_id
+        self.organization_id = organization_id
+        self.updated_by = updated_by

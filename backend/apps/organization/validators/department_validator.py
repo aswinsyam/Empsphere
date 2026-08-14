@@ -1,43 +1,25 @@
 """
-Department validators.
-
-Business-level validation for department operations.
+Department Validator.
+Department validation logic.
 """
-
 from __future__ import annotations
 
-from apps.common.exceptions.custom_exception import ConflictException
-from apps.organization.repositories.department_repository import (
-    DepartmentRepository,
-)
+from apps.common.exceptions.custom_exception import ValidationException, NotFoundException
 
 
 class DepartmentValidator:
-    """
-    Business validation for departments.
-    """
+    """Department validation logic."""
 
-    def __init__(self):
-        self.department_repository = DepartmentRepository()
+    @staticmethod
+    def validate_create(name, code):
+        """Validate department creation."""
+        if not name or not name.strip():
+            raise ValidationException("Department name is required.")
+        if not code or not code.strip():
+            raise ValidationException("Department code is required.")
 
-    def validate_create(self, name: str, code: str) -> None:
-        """
-        Ensure a department with the same name/code does not already exist.
-        """
-
-        if self.department_repository.name_exists(name):
-            raise ConflictException("A department with this name already exists.")
-
-        if self.department_repository.code_exists(code):
-            raise ConflictException("A department with this code already exists.")
-
-    def validate_update(self, department_id: str, name: str, code: str) -> None:
-        """
-        Ensure name/code uniqueness while excluding the current department.
-        """
-
-        if self.department_repository.name_exists(name, exclude_id=department_id):
-            raise ConflictException("A department with this name already exists.")
-
-        if self.department_repository.code_exists(code, exclude_id=department_id):
-            raise ConflictException("A department with this code already exists.")
+    @staticmethod
+    def validate_update(department_id, update_data):
+        """Validate department update."""
+        if not update_data:
+            raise ValidationException("No data to update.")

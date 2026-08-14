@@ -6,51 +6,37 @@ All authentication endpoints are mounted under /api/auth/ (see config/urls.py).
 
 from django.urls import path
 
-from apps.authentication.controllers.auth_controller import (
-    GoogleLoginController,
-    LoginController,
-    LogoutController,
-    MeController,
-    ProfileController,
-    RefreshTokenController,
-    RegisterController,
-    VerifyEmailController,
-)
-from apps.authentication.controllers.otp_controller import (
-    SendOTPController,
-    VerifyOTPController,
-)
-from apps.authentication.controllers.password_controller import (
-    ChangePasswordController,
-    ForgotPasswordController,
-    ResetPasswordController,
-    SetPasswordController,
-)
-from apps.authentication.controllers.user_controller import CreateUserController
+from apps.authentication.views.auth_view import AuthView
+from apps.authentication.views.otp_view import OTPView
+from apps.authentication.views.user_view import UserView
+from apps.authentication.views.password_view import PasswordView
+from apps.authentication.views.google_login_view import GoogleLoginView
+from apps.authentication.views.verify_email_view import VerifyEmailView
+from apps.authentication.views.refresh_token_view import RefreshTokenView
 
 urlpatterns = [
     # Authentication
-    path("register/", RegisterController.as_view(), name="register"),
-    path("login/", LoginController.as_view(), name="login"),
-    path("logout/", LogoutController.as_view(), name="logout"),
-    path("refresh-token/", RefreshTokenController.as_view(), name="refresh-token"),
-    path("me/", MeController.as_view(), name="me"),
-    path("verify-email/", VerifyEmailController.as_view(), name="verify-email"),
-    path("google-login/", GoogleLoginController.as_view(), name="google-login"),
+    path("register/", AuthView.as_view(), name="register"),
+    path("login/", AuthView.as_view(), name="login"),
+    path("logout/", AuthView.as_view(), name="logout"),
+    path("refresh-token/", RefreshTokenView.as_view(), name="refresh-token"),
+    path("me/", UserView.as_view(), name="me"),
+    path("verify-email/", VerifyEmailView.as_view(), name="verify-email"),
+    path("google-login/", GoogleLoginView.as_view(), name="google-login"),
 
     # Profile
-    path("profile/", ProfileController.as_view(), name="profile"),
+    path("profile/", UserView.as_view(), name="profile"),
 
     # OTP
-    path("send-otp/", SendOTPController.as_view(), name="send-otp"),
-    path("verify-otp/", VerifyOTPController.as_view(), name="verify-otp"),
+    path("send-otp/", OTPView.as_view(), name="send-otp"),
+    path("verify-otp/", OTPView.as_view(), name="verify-otp"),
 
     # Password
-    path("change-password/", ChangePasswordController.as_view(), name="change-password"),
-    path("forgot-password/", ForgotPasswordController.as_view(), name="forgot-password"),
-    path("reset-password/", ResetPasswordController.as_view(), name="reset-password"),
-    path("set-password/", SetPasswordController.as_view(), name="set-password"),
+    path("change-password/", PasswordView.as_view(), name="change-password"),
+    path("forgot-password/", PasswordView.as_view(), name="forgot-password"),
+    path("reset-password/", PasswordView.as_view(), name="reset-password"),
+    path("set-password/", PasswordView.as_view(), name="set-password"),
 
     # User management
-    path("users/create/", CreateUserController.as_view(), name="create-user"),
+    path("users/create/", UserView.as_view(), name="create-user"),
 ]

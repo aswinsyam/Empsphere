@@ -1,31 +1,36 @@
 """
-User Management DTOs.
-
-Consolidated data transfer objects for user administration
-(creating Admin/HR Manager/Employee accounts).
+User DTOs.
+Data transfer objects for user.
 """
-
 from __future__ import annotations
 
-from dataclasses import dataclass
 
-
-@dataclass
 class CreateUserDTO:
-    """Represents data passed to create a new user as an admin."""
+    """Create user data transfer object."""
 
-    first_name: str
-    last_name: str
-    full_name: str
+    def __init__(self, first_name, last_name, email, password,
+                 confirm_password, company_secret, phone=None,
+                 role="EMPLOYEE", department_id=None,
+                 designation_id=None, created_by=None):
+        self.first_name = first_name
+        self.last_name = last_name
+        self.email = email
+        self.password = password
+        self.confirm_password = confirm_password
+        self.company_secret = company_secret
+        self.phone = phone
+        self.role = role
+        self.department_id = department_id
+        self.designation_id = designation_id
+        self.created_by = created_by
 
-    email: str
-    phone: str
 
-    password: str
+class UpdateProfileDTO:
+    """Update profile data transfer object."""
 
-    role: str
-
-    department_id: str | None = None
-    designation_id: str | None = None
-
-    created_by: str | None = None
+    def __init__(self, user_id, first_name=None, last_name=None,
+                 phone=None):
+        self.user_id = user_id
+        self.first_name = first_name
+        self.last_name = last_name
+        self.phone = phone

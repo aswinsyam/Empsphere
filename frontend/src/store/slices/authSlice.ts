@@ -1,4 +1,4 @@
-/**
+ /**
  * Auth slice.
  * Manages the current user's authentication state with Redux Toolkit.
  */
@@ -23,14 +23,14 @@ interface AuthState {
 
 /** Convert a login/register result into a partial User for the store. */
 function userFromLogin(result: {
-  user_id: string;
+  user_id?: string;
   email: string;
-  role: string;
+  role?: string;
 }): User {
   return {
-    _id: result.user_id,
+    _id: result.user_id || "",
     email: result.email,
-    role: result.role,
+    role: result.role || "",
   };
 }
 
@@ -46,7 +46,14 @@ export const login = createAsyncThunk<LoginResult, LoginPayload>(
   "auth/login",
   async (payload) => {
     const result = await authService.login(payload);
-    TokenUtil.setTokens(result.access_token, result.refresh_token);
+
+    // Unverified users get a `requires_otp` response with no tokens.
+    // We must NOT store tokens for them.
+    const requiresOtp = (result as { requires_otp?: boolean }).requires_otp;
+    if (!requiresOtp) {
+      // When requires_otp is false, the backend always returns both tokens.
+      TokenUtil.setTokens(result.access_token!, result.refresh_token!);
+    }
     return result;
   }
 );
@@ -87,7 +94,8 @@ export const googleLogin = createAsyncThunk<LoginResult, string>(
   "auth/googleLogin",
   async (idToken) => {
     const result = await authService.googleLogin(idToken);
-    TokenUtil.setTokens(result.access_token, result.refresh_token);
+    // Google login always returns both tokens.
+    TokenUtil.setTokens(result.access_token!, result.refresh_token!);
     return result;
   }
 );
@@ -119,7 +127,14 @@ const authSlice = createSlice({
     builder.addCase(login.fulfilled, (state, action) => {
       state.loading = false;
       state.error = null;
-      state.user = userFromLogin(action.payload);
+
+      // When the backend responds with `requires_otp`, the user's email is
+      // not yet verified and NO tokens/user were issued. Do not set a user.
+      const requiresOtp = (action.payload as { requires_otp?: boolean })
+        .requires_otp;
+      if (!requiresOtp) {
+        state.user = userFromLogin(action.payload);
+      }
     });
     builder.addCase(login.rejected, (state, action) => {
       state.loading = false;

@@ -97,9 +97,13 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+    "default": {
+        "ENGINE": "djongo",
+        "NAME": os.getenv("DATABASE_NAME", "empsphere_db"),
+        "ENFORCE_SCHEMA": False,
+        "CLIENT": {
+            "host": os.getenv("MONGO_URI", "mongodb://localhost:27017/empsphere_db"),
+        },
     }
 }
 
@@ -205,7 +209,7 @@ SIMPLE_JWT = {
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
     "UPDATE_LAST_LOGIN": False,
-"ALGORITHM": "HS256",
+    "ALGORITHM": "HS256",
     "SIGNING_KEY": os.getenv("JWT_SECRET") or SECRET_KEY,
     "AUTH_HEADER_TYPES": ("Bearer",),
     "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",

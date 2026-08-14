@@ -16,27 +16,29 @@
 7. [Refresh Token & Blacklist](#7-refresh-token--blacklist)
 8. [OTP Implementation](#8-otp-implementation)
 9. [Email Configuration](#9-email-configuration)
-10. [Google Authentication](#10-google-authentication)
-11. [RBAC & Role Hierarchy](#11-rbac--role-hierarchy)
-12. [Middleware & Exception Handling](#12-middleware--exception-handling)
-13. [ApiResponse](#13-apiresponse)
-14. [MongoDB / PyMongo](#14-mongodb--pymongo)
-15. [Frontend Routing](#15-frontend-routing)
-16. [Redux Toolkit State Management](#16-redux-toolkit-state-management)
-17. [Axios Configuration & Interceptors](#17-axios-configuration--interceptors)
-18. [Authentication Flow (Step by Step)](#18-authentication-flow-step-by-step)
-19. [Protected Routes](#19-protected-routes)
-20. [Role-Based Dashboard Routing](#20-role-based-dashboard-routing)
-21. [Profile Functionality](#21-profile-functionality)
-22. [Change Password](#22-change-password)
-23. [Forgot Password](#23-forgot-password)
-24. [Reset Password](#24-reset-password)
-25. [Email Verification](#25-email-verification)
-26. [Google Login Flow](#26-google-login-flow)
-27. [Important File Explanations](#27-important-file-explanations)
-28. [Missing Features](#28-missing-features)
-29. [Partially Implemented Features](#29-partially-implemented-features)
-30. [Potential Bugs](#30-potential-bugs)
+10. [Mailpit — How to View Emails in Development](#91-mailpit--how-to-view-emails-in-development)
+11. [Company Registration Code (3456)](#92-company-registration-code-3456)
+12. [Google Authentication](#10-google-authentication)
+13. [RBAC & Role Hierarchy](#11-rbac--role-hierarchy)
+14. [Middleware & Exception Handling](#12-middleware--exception-handling)
+15. [ApiResponse](#13-apiresponse)
+16. [MongoDB / PyMongo](#14-mongodb--pymongo)
+17. [Frontend Routing](#15-frontend-routing)
+18. [Redux Toolkit State Management](#16-redux-toolkit-state-management)
+19. [Axios Configuration & Interceptors](#17-axios-configuration--interceptors)
+20. [Authentication Flow (Step by Step)](#18-authentication-flow-step-by-step)
+21. [Protected Routes](#19-protected-routes)
+22. [Role-Based Dashboard Routing](#20-role-based-dashboard-routing)
+23. [Profile Functionality](#21-profile-functionality)
+24. [Change Password](#22-change-password)
+25. [Forgot Password](#23-forgot-password)
+26. [Reset Password](#24-reset-password)
+27. [Email Verification](#25-email-verification)
+28. [Google Login Flow](#26-google-login-flow)
+29. [Important File Explanations](#27-important-file-explanations)
+30. [Missing Features](#28-missing-features)
+31. [Partially Implemented Features](#29-partially-implemented-features)
+32. [Potential Bugs](#30-potential-bugs)
 
 ---
 
@@ -402,6 +404,283 @@ When a refresh token is used:
 
 ---
 
+## 9.1 Mailpit — How to View Emails in Development
+
+### What is Mailpit?
+
+**Mailpit** is a free, open-source email testing tool. It acts like a **fake email server** (SMTP server) that runs on your computer. When your Django backend sends an email (like an OTP code or password reset link), Mailpit **catches** that email instead of actually sending it to a real inbox. Then you can open Mailpit's web interface in your browser to **read the email** — just like opening Gmail or Outlook.
+
+### Why do we need Mailpit?
+
+In development, we **do NOT want to send real emails** to real people. That would be:
+- **Slow** — real SMTP servers (like Gmail) have delays
+- **Risky** — we might accidentally email real users with test data
+- **Impossible** — we don't have a real SMTP server configured
+
+Mailpit solves this by pretending to be an email server. It catches every email and shows it to you in a nice web UI.
+
+### How Mailpit Works (Simple Analogy)
+
+```
+Your Django App
+      │
+      │  "I want to send an email to user@example.com"
+      │
+      ▼
+┌─────────────────┐
+│   Mailpit       │  ← Mailpit catches the email (like a mailbox)
+│  (SMTP Server)  │
+│  Port: 1025     │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Mailpit Web UI │  ← You open this in your browser to read emails
+│  http://localhost:8025  │
+└─────────────────┘
+```
+
+### Step-by-Step: How to Use Mailpit
+
+#### Step 1: Install Mailpit
+
+Mailpit is a single executable file. You install it using one of these methods:
+
+**Option A — Using Go (if you have Go installed):**
+```bash
+go install github.com/axllent/mailpit@latest
+```
+
+**Option B — Using Homebrew (macOS/Linux):**
+```bash
+brew install axllent/tap/mailpit
+```
+
+**Option C — Using Scoop (Windows):**
+```bash
+scoop bucket add axllent https://github.com/axllent/scoop.git
+scoop install mailpit
+```
+
+**Option D — Direct Download (Windows):**
+1. Go to https://github.com/axllent/mailpit/releases
+2. Download the latest `mailpit-windows-amd64.zip` file
+3. Extract it to a folder (e.g., `C:\mailpit`)
+4. Add that folder to your system PATH
+
+#### Step 2: Start Mailpit
+
+Open a terminal and run:
+```bash
+mailpit
+```
+
+You should see output like:
+```
+[mailpit] 2026/08/11 09:00:00 SMTP server listening on 0.0.0.0:1025
+[mailpit] 2026/08/11 09:00:00 Web UI listening on http://0.0.0.0:8025
+```
+
+This means:
+- **SMTP server** is running on port **1025** (this is where Django sends emails)
+- **Web UI** is running on port **8025** (this is where you read emails)
+
+#### Step 3: Verify Your `.env` is Configured for Mailpit
+
+Open `backend/.env` and make sure these values are set:
+
+```env
+EMAIL_HOST=localhost
+EMAIL_PORT=1025
+EMAIL_USE_TLS=False
+EMAIL_HOST_USER=
+EMAIL_HOST_PASSWORD=
+```
+
+**Important:** The `EMAIL_PORT=1025` is the key setting. This tells Django to send emails to Mailpit instead of a real email server.
+
+#### Step 4: Start Your Django Backend
+
+```bash
+cd backend
+python manage.py runserver 8000
+```
+
+#### Step 5: Trigger an Email
+
+Now trigger any feature that sends an email. For example:
+
+- **Register a new account** → no email is sent on registration
+- **Send OTP** → `POST /api/auth/send-otp/` with `{ "email": "test@example.com", "purpose": "email_verification" }`
+- **Forgot Password** → `POST /api/auth/forgot-password/` with `{ "email": "test@example.com" }`
+- **Login with OTP** → On the login page, click the "OTP" tab, enter your email, click "Send OTP"
+
+#### Step 6: Read the Email in Mailpit
+
+1. Open your browser and go to: **http://localhost:8025**
+2. You'll see a list of all emails Mailpit has caught
+3. Click on an email to read it
+4. You'll see the **OTP code** or **password reset link** inside the email body
+
+### What You'll See in Mailpit
+
+When you open Mailpit's web UI, you'll see:
+
+```
+┌─────────────────────────────────────────────────────┐
+│  Mailpit                                             │
+│  ─────────────────────────────────────────────────   │
+│  From: webmaster@localhost                           │
+│  To:   test@example.com                              │
+│  Subject: Your verification code                     │
+│  ─────────────────────────────────────────────────   │
+│  Your verification code is: 482913                   │
+│  This code will expire in 10 minutes.                │
+└─────────────────────────────────────────────────────┘
+```
+
+### Common Mailpit Features
+
+| Feature | How to Use |
+|---------|------------|
+| **View emails** | Open `http://localhost:8025` in your browser |
+| **Search emails** | Use the search bar at the top of the Mailpit UI |
+| **Delete emails** | Click the trash icon next to an email |
+| **Delete all emails** | Click the "Delete all" button |
+| **View HTML source** | Click "Source" tab when viewing an email |
+| **API access** | Mailpit has a REST API at `http://localhost:8025/api/v1/` |
+
+### Troubleshooting Mailpit
+
+| Problem | Solution |
+|---------|----------|
+| **Mailpit won't start** | Check if port 1025 is already in use. Run `netstat -ano \| findstr :1025` on Windows |
+| **Emails not appearing** | Make sure `EMAIL_PORT=1025` in `backend/.env` and restart Django |
+| **Can't open web UI** | Make sure Mailpit is running. The web UI is at `http://localhost:8025` |
+| **Email send errors in Django logs** | Check `backend/logs/app.log` for the error message |
+
+### How the Code Sends Emails (Beginner Explanation)
+
+When you trigger an email in EmpSphere, here's what happens behind the scenes:
+
+1. **Frontend** calls an API endpoint (e.g., `POST /api/auth/send-otp/`)
+2. **Controller** receives the request and validates it
+3. **Service** (e.g., `OTPService`) generates the OTP and calls `EmailManager`
+4. **EmailManager** calls `EmailService.send()`
+5. **EmailService** uses Django's `EmailMultiAlternatives` to create the email
+6. **Django** sends the email to the SMTP server configured in settings
+7. **Mailpit** (running on port 1025) catches the email
+8. **You** open `http://localhost:8025` to read the email
+
+### Key Files for Email
+
+| File | What it does |
+|------|-------------|
+| `backend/config/settings.py` | Reads email settings from `.env` (lines 168-179) |
+| `backend/apps/common/email/email_service.py` | Sends the actual email using Django's SMTP backend |
+| `backend/apps/common/email/email_templates.py` | Lists all email template names |
+| `backend/apps/authentication/managers/email_manager.py` | Composes emails (subject, body, recipient) |
+| `backend/templates/emails/otp_email.html` | HTML template for OTP emails |
+| `backend/templates/emails/verify_email.html` | HTML template for email verification |
+| `backend/templates/emails/forgot_password.html` | HTML template for password reset |
+| `backend/.env` | Contains `EMAIL_PORT=1025` (Mailpit's port) |
+
+---
+
+## 9.2 Company Registration Code (3456)
+
+### What is the Company Registration Code?
+
+The **Company Registration Code** (also called `company_secret` in the code) is a secret password that a new admin must enter on the **Register** page to create an account. Only people who know this code can register as an admin.
+
+### Current Code
+
+The current company registration code is **`3456`**. This is set in `backend/.env`:
+
+```env
+COMPANY_REGISTRATION_SECRET=3456
+```
+
+### Where is the Company Code Used?
+
+| File | What it does |
+|------|-------------|
+| `backend/.env` | Stores the actual secret value (`COMPANY_REGISTRATION_SECRET=3456`) |
+| `backend/apps/common/config/settings.py` | Reads the secret from `.env` into the `settings` object (line 94) |
+| `backend/apps/authentication/serializers/auth_serializer.py` | Validates the `company_secret` field against `settings.COMPANY_REGISTRATION_SECRET` (line 49) |
+| `backend/apps/authentication/dtos/auth_dto.py` | `RegisterDTO` has a `company_secret` field (line 31) |
+| `frontend/src/components/auth/RegisterForm.tsx` | Has a "Company Registration Secret" input field (line 108-117) |
+| `frontend/src/types/auth.ts` | TypeScript type includes `company_secret: string` |
+
+### How the Company Code Validation Works (Step by Step)
+
+1. **User types the code** in the Register form under "Company Registration Secret"
+2. **Frontend sends** the code in the registration request:
+   ```json
+   {
+     "first_name": "John",
+     "last_name": "Doe",
+     "email": "john@example.com",
+     "password": "Password@123",
+     "confirm_password": "Password@123",
+     "company_secret": "3456"
+   }
+   ```
+3. **Backend receives** the request at `POST /api/auth/register/`
+4. **RegisterSerializer validates** the request. In `validate()`, it checks:
+   ```python
+   if attrs.get("company_secret") != settings.COMPANY_REGISTRATION_SECRET:
+       raise serializers.ValidationError(
+           {"company_secret": "Invalid company registration secret."}
+       )
+   ```
+5. **If the code is wrong** → the backend returns a 400 error: `"Invalid company registration secret."`
+6. **If the code is correct** → the serializer continues and creates the admin account
+7. **`company_secret` is removed** from the data before it reaches the service layer (security — we never store the secret)
+
+### How to Change the Company Code
+
+If you want to change the code from `3456` to something else:
+
+1. Open `backend/.env`
+2. Change the value:
+   ```env
+   COMPANY_REGISTRATION_SECRET=my-new-code
+   ```
+3. **Restart the Django server** for the change to take effect:
+   ```bash
+   cd backend
+   python manage.py runserver 8000
+   ```
+4. Now new admins must enter `my-new-code` to register
+
+### Important Security Notes
+
+- **Never share this code publicly** — it's the key to creating admin accounts
+- **Never hardcode it** in the frontend — it's only stored on the backend in `.env` (which is in `.gitignore`)
+- **In production**, use a longer, more random code (like a UUID or random string)
+
+### Testing the Company Code with Postman
+
+When testing the registration endpoint in Postman, include `company_secret` in the request body:
+
+```json
+POST /api/auth/register/
+{
+  "first_name": "John",
+  "last_name": "Doe",
+  "email": "john@example.com",
+  "phone": "+1234567890",
+  "password": "Password@123",
+  "confirm_password": "Password@123",
+  "company_secret": "3456"
+}
+```
+
+If you get `"Invalid company registration secret."`, double-check that `backend/.env` has `COMPANY_REGISTRATION_SECRET=3456` and that the Django server was restarted after any changes.
+
+---
+
 ## 10. Google Authentication
 
 ### Frontend
@@ -747,9 +1026,9 @@ Frontend (authSlice login thunk)
 ### Registration Flow
 ```
 Frontend (RegisterForm)
-    ↓ POST /api/auth/register/ {first_name, last_name, email, phone, password}
+    ↓ POST /api/auth/register/ {first_name, last_name, email, phone, password, confirm_password, company_secret}
 Backend (RegisterController)
-    ↓ RegisterSerializer validates (forces role=EMPLOYEE)
+    ↓ RegisterSerializer validates (checks company_secret == "3456", forces role=ADMIN)
     ↓ RegisterDTO
 Backend (RegisterService)
     ↓ UserRepository.email_exists() → ConflictException if exists
@@ -761,6 +1040,8 @@ Backend (RegisterService)
 Frontend (authSlice register thunk)
     ↓ navigate("/login")
 ```
+
+**Important:** The registration flow requires the **Company Registration Code (`3456`)**. The `RegisterSerializer` validates this code against `settings.COMPANY_REGISTRATION_SECRET` before allowing the account to be created. If the code is wrong, the backend returns `"Invalid company registration secret."` and no account is created.
 
 ### Logout Flow
 ```

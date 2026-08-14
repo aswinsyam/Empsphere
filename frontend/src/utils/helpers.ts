@@ -2,6 +2,32 @@
  * Generic utility helpers.
  */
 
+/** A single password requirement item for live validation UIs. */
+export interface PasswordRequirement {
+  label: string;
+  met: boolean;
+}
+
+/**
+ * Returns the four password-strength checks that mirror the backend's
+ * `PASSWORD_REGEX` in ``backend/apps/common/core/regex.py``.
+ *
+ * The backend requires:
+ *   1. 8+ characters
+ *   2. at least one uppercase letter
+ *   3. at least one lowercase letter
+ *   4. at least one digit
+ */
+export function getPasswordRequirements(password: string): PasswordRequirement[] {
+  return [
+    { label: "At least 8 characters", met: password.length >= 8 },
+    { label: "One uppercase letter", met: /[A-Z]/.test(password) },
+    { label: "One lowercase letter", met: /[a-z]/.test(password) },
+    { label: "One number", met: /\d/.test(password) },
+  ];
+}
+
+
 /** Simple class-name joiner (like clsx). */
 export function cn(...classes: (string | false | null | undefined)[]): string {
   return classes.filter(Boolean).join(" ");

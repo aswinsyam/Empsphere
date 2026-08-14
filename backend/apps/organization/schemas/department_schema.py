@@ -1,42 +1,22 @@
 """
-Department Schema Definition.
-
-Defines the structure of department documents stored in MongoDB.
-This schema is reused across the organization and employee modules.
+Department Schema.
+MongoDB schema definitions for department.
 """
-
 from __future__ import annotations
-
 from datetime import datetime
-from typing import Any
+from apps.common.database.mongo import mongo
+from apps.common.core.collections import Collections
 
 
 class DepartmentSchema:
-    """
-    Department document schema.
-    """
+    """Department MongoDB schema."""
 
     @staticmethod
-    def create_document(data: dict[str, Any]) -> dict[str, Any]:
-        """
-        Build a new department document.
-        """
-
-        now = datetime.utcnow()
-
-        return {
-            "name": data.get("name"),
-            "code": data.get("code"),
-            "description": data.get("description"),
-            "head_user_id": data.get("head_user_id"),
-            "organization_id": data.get("organization_id"),
-
-            "is_active": True,
-            "is_deleted": False,
-            "created_at": now,
-            "updated_at": now,
-            "created_by": data.get("created_by"),
-            "updated_by": data.get("created_by"),
-            "deleted_at": None,
-            "deleted_by": None,
-        }
+    def create_document(document):
+        """Create a department document."""
+        collection = mongo.get_collection(Collections.DEPARTMENTS)
+        document["is_active"] = True
+        document["created_at"] = datetime.utcnow()
+        document["updated_at"] = datetime.utcnow()
+        collection.insert_one(document)
+        return document.get("_id")

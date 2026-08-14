@@ -1,49 +1,39 @@
 """
 User Repository.
-
-Contains user-specific database operations.
+Handles user database operations.
 """
+from __future__ import annotations
 
-from apps.common.base.base_repository import BaseRepository
+from apps.authentication.schemas.user_schema import UserSchema
 
 
-class UserRepository(BaseRepository):
-    """
-    Repository for the users collection.
-    """
+class UserRepository:
+    """User data access layer."""
 
-    COLLECTION_NAME = "users"
+    def email_exists(self, email):
+        """Check if email already exists."""
+        return UserSchema.get_by_email(email) is not None
 
-    def __init__(self):
-        super().__init__(self.COLLECTION_NAME)
+    def get_by_email(self, email):
+        """Get user by email."""
+        return UserSchema.get_by_email(email)
 
-    def get_by_email(self, email: str):
-        """
-        Get a user by email.
-        """
-        return self.get_one({"email": email.lower()})
+    def get_by_id(self, user_id):
+        """Get user by ID."""
+        return UserSchema.get_by_id(user_id)
 
-    def get_by_employee_code(self, employee_code: str):
-        """
-        Get a user by employee code.
-        """
-        return self.get_one({"employee_code": employee_code})
+    def get_all(self):
+        """Get all users."""
+        return UserSchema.get_all()
 
-    def get_by_google_id(self, google_id: str):
-        """
-        Get a user by Google ID.
-        """
-        return self.get_one({"google_id": google_id})
+    def create(self, document, user_id):
+        """Create a new user document."""
+        return UserSchema.create(document, user_id=user_id)
 
-    def email_exists(self, email: str) -> bool:
-        """
-        Check whether an email already exists.
-        """
-        return self.exists({"email": email.lower()})
+    def update(self, user_id, updates):
+        """Update user document."""
+        return UserSchema.update(user_id, updates)
 
-    def employee_code_exists(self, employee_code: str) -> bool:
-        """
-        Check whether an employee code already exists.
-        """
-        return self.exists({"employee_code": employee_code})
-    
+    def soft_delete(self, user_id):
+        """Soft delete user."""
+        return UserSchema.soft_delete(user_id)
