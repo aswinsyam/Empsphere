@@ -4,6 +4,8 @@ Handles authentication business logic.
 """
 from __future__ import annotations
 
+from datetime import datetime
+
 from apps.authentication.repositories.user_repository import UserRepository
 from apps.authentication.managers.otp_manager import OTPManager
 from apps.authentication.managers.employee_code_manager import EmployeeCodeManager
@@ -89,7 +91,7 @@ class AuthService(BaseService):
         user_id = payload.get("user_id")
         if not user_id:
             raise UnauthorizedException("Invalid token payload.")
-        self.user_repository.update(user_id, {"is_email_verified": True}, user_id=user_id)
+        self.user_repository.update(user_id, {"is_email_verified": True})
 
     def google_login(self, dto):
         """Login with Google credentials."""
@@ -116,7 +118,7 @@ class AuthService(BaseService):
             document["google_id"] = google_user["google_id"]
             document["profile_image"] = google_user["profile_image"]
             document["is_email_verified"] = True
-            user_id = self.user_repository.create(document)
+            user_id = self.user_repository.create(document, user_id=None)
             user = self.user_repository.get_by_id(user_id)
         else:
             self.user_repository.update(

@@ -22,6 +22,10 @@ class UserRepository:
         """Get user by ID."""
         return UserSchema.get_by_id(user_id)
 
+    def get_by_google_id(self, google_id):
+        """Get user by Google ID."""
+        return UserSchema.get_by_google_id(google_id)
+
     def get_all(self):
         """Get all users."""
         return UserSchema.get_all()

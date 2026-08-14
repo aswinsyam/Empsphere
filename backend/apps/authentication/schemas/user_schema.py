@@ -26,6 +26,12 @@ class UserSchema:
         return collection.find_one({"_id": user_id})
 
     @staticmethod
+    def get_by_google_id(google_id):
+        """Get user by Google ID."""
+        collection = mongo.get_collection(Collections.USERS)
+        return collection.find_one({"google_id": google_id})
+
+    @staticmethod
     def get_all():
         """Get all users."""
         collection = mongo.get_collection(Collections.USERS)

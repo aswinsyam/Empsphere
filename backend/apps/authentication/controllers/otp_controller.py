@@ -14,10 +14,7 @@ from apps.authentication.serializers.otp_serializer import (
     SendOTPSerializer,
     VerifyOTPSerializer,
 )
-from apps.authentication.services.otp_service import (
-    SendOTPService,
-    VerifyOTPService,
-)
+from apps.authentication.services.otp_service import OTPService
 from apps.common.base.base_controller import BaseController
 
 
@@ -28,7 +25,7 @@ class SendOTPController(APIView, BaseController):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.send_otp_service = SendOTPService()
+        self.otp_service = OTPService()
 
     def post(self, request):
         serializer = SendOTPSerializer(data=request.data)
@@ -49,7 +46,7 @@ class SendOTPController(APIView, BaseController):
 
         dto = SendOTPDTO(**data)
 
-        self.send_otp_service.send(dto)
+        self.otp_service.send_otp(dto)
 
         return self.success(
             message="OTP sent to your email.",
@@ -65,7 +62,7 @@ class VerifyOTPController(APIView, BaseController):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.verify_otp_service = VerifyOTPService()
+        self.otp_service = OTPService()
 
     def post(self, request):
         serializer = VerifyOTPSerializer(data=request.data)
@@ -84,7 +81,7 @@ class VerifyOTPController(APIView, BaseController):
 
         dto = VerifyOTPDTO(**data)
 
-        self.verify_otp_service.verify(dto)
+        self.otp_service.verify_otp(dto)
 
         return self.success(
             message="OTP verified successfully.",

@@ -4,7 +4,7 @@ import time
 import os
 
 from apps.authentication.managers.otp_manager import OTPManager
-from apps.authentication.services.otp_service import VerifyOTPService
+from apps.authentication.services.otp_service import OTPService
 from apps.authentication.dtos.otp_dto import VerifyOTPDTO
 from apps.authentication.repositories.user_repository import UserRepository
 
@@ -25,22 +25,23 @@ class ConcurrentOTPTest(TestCase):
 
     def test_concurrent_otp_verify_only_one_succeeds(self):
         otp = OTPManager().create_and_send(self.email, 'email_verification')
+        otp_value = otp['otp_code']
 
         results = []
         lock = threading.Lock()
 
         def worker(idx, otp_value):
-            svc = VerifyOTPService()
+            svc = OTPService()
             dto = VerifyOTPDTO(self.email, otp_value, 'email_verification')
             try:
-                res = svc.verify(dto)
+                res = svc.verify_otp(dto)
                 with lock:
                     results.append((idx, True, res))
             except Exception as e:
                 with lock:
                     results.append((idx, False, str(e)))
 
-        threads = [threading.Thread(target=worker, args=(i, otp)) for i in range(6)]
+        threads = [threading.Thread(target=worker, args=(i, otp_value)) for i in range(6)]
 
         for t in threads:
             t.start()

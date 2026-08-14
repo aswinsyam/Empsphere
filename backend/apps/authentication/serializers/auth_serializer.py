@@ -14,6 +14,7 @@ class AuthSerializer(serializers.Serializer):
     confirm_password = serializers.CharField(max_length=128, required=False)
     first_name = serializers.CharField(max_length=150, required=False)
     last_name = serializers.CharField(max_length=150, required=False)
+    phone = serializers.CharField(max_length=20, required=False)
     company_secret = serializers.CharField(max_length=100, required=False)
 
 

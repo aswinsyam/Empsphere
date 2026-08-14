@@ -98,12 +98,8 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
     "default": {
-        "ENGINE": "djongo",
-        "NAME": os.getenv("DATABASE_NAME", "empsphere_db"),
-        "ENFORCE_SCHEMA": False,
-        "CLIENT": {
-            "host": os.getenv("MONGO_URI", "mongodb://localhost:27017/empsphere_db"),
-        },
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": ":memory:",
     }
 }
 

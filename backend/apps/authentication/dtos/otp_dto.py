@@ -12,6 +12,9 @@ class SendOTPDTO:
         self.email = email
         self.purpose = purpose
 
+    def get(self, key, default=None):
+        return getattr(self, key, default)
+
 
 class VerifyOTPDTO:
     """Verify OTP data transfer object."""
@@ -20,3 +23,6 @@ class VerifyOTPDTO:
         self.email = email
         self.otp = otp
         self.purpose = purpose
+
+    def get(self, key, default=None):
+        return getattr(self, key, default)
