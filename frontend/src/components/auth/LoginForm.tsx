@@ -12,6 +12,7 @@ import { Input } from "@/components/common/Input";
 import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
 import { getErrorMessage } from "@/utils/helpers";
 import { getDashboardRoute } from "@/utils/constants";
+import { toastSuccess, toastError, AuthToasts } from "@/components/common/ToastProvider";
 
 export function LoginForm() {
   const { login, googleLogin, loading } = useAuth();
@@ -21,27 +22,29 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  // Password login handler.
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     try {
       const result = await login({ email, password });
 
-      // Unverified users must verify their email via OTP before logging in.
       const requiresOtp = (result as { payload?: { requires_otp?: boolean } })
         .payload?.requires_otp;
       if (requiresOtp) {
+        toastSuccess(AuthToasts.otpSent);
         navigate(`/verify-email?email=${encodeURIComponent(email)}`, {
           replace: true,
         });
         return;
       }
 
+      toastSuccess("Login successful.");
       const role = (result as { payload?: { role?: string } }).payload?.role;
       navigate(getDashboardRoute(role), { replace: true });
     } catch (err) {
-      setError(getErrorMessage(err));
+      const msg = getErrorMessage(err);
+      setError(msg);
+      toastError(msg);
     }
   };
 

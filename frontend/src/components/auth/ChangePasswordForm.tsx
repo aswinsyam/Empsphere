@@ -9,6 +9,7 @@ import { userService } from "@/services/user.service";
 import { Button } from "@/components/common/Button";
 import { Input } from "@/components/common/Input";
 import { getErrorMessage, getPasswordRequirements } from "@/utils/helpers";
+import { toastSuccess, toastError, AuthToasts } from "@/components/common/ToastProvider";
 
 export function ChangePasswordForm() {
   const navigate = useNavigate();
@@ -23,8 +24,6 @@ export function ChangePasswordForm() {
   const passwordRequirements = getPasswordRequirements(newPassword);
   const isPasswordValid = passwordRequirements.every((req) => req.met);
 
-  // Live confirm-password matching. Only show a message once the user has
-  // started typing in the confirm field.
   const confirmTouched = confirmPassword.length > 0;
   const passwordsMatch = newPassword === confirmPassword;
 
@@ -34,25 +33,32 @@ export function ChangePasswordForm() {
     setSuccess(null);
 
     if (!isPasswordValid) {
-      setError("Please meet all password requirements before changing your password.");
+      const msg = "Please meet all password requirements before changing your password.";
+      setError(msg);
+      toastError(msg);
       return;
     }
 
     if (!passwordsMatch) {
-      setError("New password and confirmation do not match.");
+      const msg = "New password and confirmation do not match.";
+      setError(msg);
+      toastError(msg);
       return;
     }
 
     setLoading(true);
     try {
       await userService.changePassword(currentPassword, newPassword);
+      toastSuccess(AuthToasts.passwordChanged);
       setSuccess("Password changed successfully.");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
       setTimeout(() => navigate("/dashboard"), 1500);
     } catch (err) {
-      setError(getErrorMessage(err));
+      const msg = getErrorMessage(err);
+      setError(msg);
+      toastError(msg);
     } finally {
       setLoading(false);
     }

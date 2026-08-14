@@ -55,3 +55,32 @@ class UserView(APIView):
             errors=serializer.errors,
             status_code=status.HTTP_400_BAD_REQUEST,
         )
+
+
+class ProfileImageView(APIView):
+    """Handle profile image uploads."""
+
+    def post(self, request):
+        file = request.FILES.get("profile_image")
+        if not file:
+            return ApiResponse.error(
+                message="No file uploaded.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        service = UserService()
+        user = service.get_by_id(str(request.user["_id"]))
+        # Save uploaded file under MEDIA_ROOT/profiles/
+        from django.core.files.storage import default_storage
+        from django.core.files.base import ContentFile
+        import os
+        filename = default_storage.save(
+            os.path.join("profiles", file.name),
+            ContentFile(file.read()),
+        )
+        file_url = f"/media/{filename}"
+        updated = service.update_profile_image(str(user["_id"]), file_url)
+        return ApiResponse.success(
+            message="Profile image uploaded successfully.",
+            data=UserSerializer(updated).data,
+            status_code=status.HTTP_200_OK,
+        )

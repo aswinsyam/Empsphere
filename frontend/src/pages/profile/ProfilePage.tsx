@@ -15,6 +15,7 @@ import { Input } from "@/components/common/Input";
 import { PageHeader } from "@/components/common/PageHeader";
 import { userService } from "@/services/user.service";
 import { getErrorMessage } from "@/utils/helpers";
+import { toastSuccess, toastError, AuthToasts } from "@/components/common/ToastProvider";
 
 export function ProfilePage() {
   const { user } = useAuth();
@@ -42,9 +43,12 @@ export function ProfilePage() {
     try {
       await userService.updateProfile({ first_name, last_name, phone });
       await refreshProfile();
+      toastSuccess(AuthToasts.profileUpdated);
       setSuccess("Profile updated successfully.");
     } catch (err) {
-      setError(getErrorMessage(err));
+      const msg = getErrorMessage(err);
+      setError(msg);
+      toastError(msg);
     } finally {
       setLoading(false);
     }
@@ -59,9 +63,12 @@ export function ProfilePage() {
     try {
       await userService.uploadProfileImage(file);
       await refreshProfile();
+      toastSuccess(AuthToasts.profileImageUploaded);
       setSuccess("Profile image updated successfully.");
     } catch (err) {
-      setError(getErrorMessage(err));
+      const msg = getErrorMessage(err);
+      setError(msg);
+      toastError(msg);
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";

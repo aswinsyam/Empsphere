@@ -1,11 +1,14 @@
 """
 OTP Service.
-Handles OTP creation and verification.
+Handles OTP creation, verification, and email delivery.
 """
 from __future__ import annotations
 
 import random
 from datetime import datetime, timedelta
+
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
 
 from apps.authentication.repositories.otp_repository import OTPRepository
 from apps.common.base.base_service import BaseService
@@ -20,7 +23,7 @@ class OTPService(BaseService):
         self.otp_repository = OTPRepository()
 
     def send_otp(self, dto):
-        """Send OTP to user email."""
+        """Send OTP to user email and deliver via SMTP."""
         email = dto.get("email")
         purpose = dto.get("purpose", "email_verification")
         self.otp_repository.invalidate_active(email, purpose)
@@ -32,10 +35,33 @@ class OTPService(BaseService):
             "expires_at": datetime.utcnow() + timedelta(minutes=10),
             "is_used": False,
         })
+        self._send_otp_email(email, otp_code, purpose)
         return {
             "message": f"OTP sent to {email}",
             "otp_purpose": purpose,
         }
+
+    def _send_otp_email(self, email, otp_code, purpose):
+        """Render the OTP email template and send it via Django SMTP."""
+        subject = "EmpSphere OTP Code"
+        context = {
+            "otp": otp_code,
+            "year": datetime.utcnow().year,
+            "purpose": purpose,
+        }
+        html_message = None
+        try:
+            html_message = render_to_string("emails/otp_email.html", context)
+        except Exception:
+            pass
+        send_mail(
+            subject=subject,
+            message=f"Your OTP code is: {otp_code}",
+            from_email=None,
+            recipient_list=[email],
+            html_message=html_message,
+            fail_silently=True,
+        )
 
     def verify_otp(self, dto):
         """Verify OTP code."""

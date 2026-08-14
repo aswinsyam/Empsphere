@@ -11,18 +11,20 @@ import "react-toastify/dist/ReactToastify.css";
 
 /**
  * ToastProvider component.
- * Renders the ToastContainer and exports toast functions.
+ * Renders the ToastContainer alongside the children.
  */
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
-    <ToastContainer
-      autoClose={5000}
-      hideProgressBar={false}
-      newestOnTop={true}
-      closeOnClick={true}
-    >
+    <>
+      <ToastContainer
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={true}
+        closeOnClick={true}
+        aria-label="Notifications"
+      />
       {children}
-    </ToastContainer>
+    </>
   );
 };
 

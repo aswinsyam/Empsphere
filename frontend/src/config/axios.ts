@@ -14,7 +14,6 @@ import axios, {
 } from "axios";
 import { ENV } from "./env";
 import { TokenUtil } from "@/utils/token";
-import { authService } from "@/services/auth.service";
 
 /** Extend axios config to optionally skip the auth interceptor. */
 declare module "axios" {
@@ -79,14 +78,16 @@ api.interceptors.response.use(
       const refreshToken = TokenUtil.getRefreshToken();
       if (refreshToken) {
         try {
-          const result = await authService.refreshToken(refreshToken);
-          // The backend rotates the refresh token, so store BOTH the new
-          // access token AND the new refresh token.
-          TokenUtil.setTokens(result.access_token, result.refresh_token);
-          original.headers.Authorization = `Bearer ${result.access_token}`;
+          const result = await axios.post<{ access_token: string; refresh_token: string }>(
+            `${ENV.API_BASE_URL}/auth/refresh-token/`,
+            { refresh_token: refreshToken }
+          );
+          const newAccessToken = result.data.access_token;
+          const newRefreshToken = result.data.refresh_token;
+          TokenUtil.setTokens(newAccessToken, newRefreshToken);
+          original.headers.Authorization = `Bearer ${newAccessToken}`;
           return api(original);
         } catch {
-          // Refresh failed (expired/revoked refresh token) -> clear auth.
           TokenUtil.clear();
           dispatchAuthExpired();
         }

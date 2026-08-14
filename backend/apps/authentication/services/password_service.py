@@ -26,16 +26,22 @@ class PasswordService(BaseService):
         """Verify password."""
         return self.password_manager.verify_password(plain_password, hashed_password)
 
-    def update_password(self, dto):
-        """Update user password."""
-        user = self.user_repository.get_by_id(dto.get("user_id"))
+    def change_password(self, user_id, current_password, new_password):
+        """Change user password after verifying current password."""
+        user = self.user_repository.get_by_id(user_id)
         if not user:
             raise NotFoundException("User not found.")
         if not self.password_manager.verify_password(
-            dto.get("current_password"), user.get("password")
+            current_password, user.get("password")
         ):
             raise UnauthorizedException("Current password is incorrect.")
-        hashed = self.password_manager.hash_password(dto.get("new_password"))
-        return self.user_repository.update(
-            dto.get("user_id"), {"password": hashed}
-        )
+        hashed = self.password_manager.hash_password(new_password)
+        return self.user_repository.update(user_id, {"password": hashed})
+
+    def set_password(self, user_id, new_password):
+        """Set a new password without verifying the current one."""
+        user = self.user_repository.get_by_id(user_id)
+        if not user:
+            raise NotFoundException("User not found.")
+        hashed = self.password_manager.hash_password(new_password)
+        return self.user_repository.update(user_id, {"password": hashed})

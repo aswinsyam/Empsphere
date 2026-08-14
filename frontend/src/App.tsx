@@ -8,13 +8,16 @@ import { BrowserRouter } from "react-router-dom";
 import { store } from "@/store";
 import { AppRoutes } from "@/routes/AppRoutes";
 import { AppBootstrap } from "@/components/AppBootstrap";
+import { ToastProvider } from "@/components/common/ToastProvider";
 
 export default function App() {
   return (
     <Provider store={store}>
       <BrowserRouter>
-        <AppBootstrap />
-        <AppRoutes />
+        <ToastProvider>
+          <AppBootstrap />
+          <AppRoutes />
+        </ToastProvider>
       </BrowserRouter>
     </Provider>
   );

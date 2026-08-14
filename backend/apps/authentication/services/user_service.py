@@ -41,3 +41,10 @@ class UserService(BaseService):
         if not user:
             raise NotFoundException("User not found.")
         return self.user_repository.update(user_id, updates)
+
+    def update_profile_image(self, user_id, file_url):
+        """Update user profile image."""
+        user = self.user_repository.get_by_id(user_id)
+        if not user:
+            raise NotFoundException("User not found.")
+        return self.user_repository.update(user_id, {"profile_image": file_url})

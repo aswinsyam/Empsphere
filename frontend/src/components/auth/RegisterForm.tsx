@@ -11,6 +11,7 @@ import { Input } from "@/components/common/Input";
 import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
 import { getErrorMessage, getPasswordRequirements } from "@/utils/helpers";
 import { getDashboardRoute } from "@/utils/constants";
+import { toastSuccess, toastError, AuthToasts } from "@/components/common/ToastProvider";
 
 export function RegisterForm() {
   const { register, googleLogin, loading } = useAuth();
@@ -28,8 +29,6 @@ export function RegisterForm() {
   const passwordRequirements = getPasswordRequirements(password);
   const isPasswordValid = passwordRequirements.every((req) => req.met);
 
-  // Live confirm-password matching. Only show a message once the user has
-  // started typing in the confirm field.
   const confirmTouched = confirmPassword.length > 0;
   const passwordsMatch = password === confirmPassword;
 
@@ -38,12 +37,16 @@ export function RegisterForm() {
     setError(null);
 
     if (!isPasswordValid) {
-      setError("Please meet all password requirements before registering.");
+      const msg = "Please meet all password requirements before registering.";
+      setError(msg);
+      toastError(msg);
       return;
     }
 
     if (!passwordsMatch) {
-      setError("Passwords do not match.");
+      const msg = "Passwords do not match.";
+      setError(msg);
+      toastError(msg);
       return;
     }
 
@@ -57,13 +60,14 @@ export function RegisterForm() {
         confirm_password: confirmPassword,
         company_secret: companySecret,
       });
-      // Email verification is required before login, so send the user to
-      // the OTP verification page (email is passed via query param).
+      toastSuccess(AuthToasts.registrationSuccess);
       navigate(`/verify-email?email=${encodeURIComponent(email)}`, {
         replace: true,
       });
     } catch (err) {
-      setError(getErrorMessage(err));
+      const msg = getErrorMessage(err);
+      setError(msg);
+      toastError(msg);
     }
   };
 

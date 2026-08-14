@@ -31,7 +31,7 @@ export const userService = {
     const formData = new FormData();
     formData.append("profile_image", file);
     const res = await api.post<ApiResponse<UserProfile>>(
-      "/auth/profile/",
+      "/auth/profile/image/",
       formData
     );
     return res.data.data;

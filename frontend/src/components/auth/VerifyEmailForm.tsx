@@ -10,6 +10,7 @@ import { authService } from "@/services/auth.service";
 import { Button } from "@/components/common/Button";
 import { Input } from "@/components/common/Input";
 import { getErrorMessage } from "@/utils/helpers";
+import { toastSuccess, toastError, AuthToasts } from "@/components/common/ToastProvider";
 
 interface VerifyEmailFormProps {
   email?: string;
@@ -32,8 +33,11 @@ export function VerifyEmailForm({ email = "" }: VerifyEmailFormProps) {
     try {
       await authService.sendOtp({ email: emailValue });
       setMessage("OTP sent. Please check your inbox.");
+      toastSuccess(AuthToasts.otpSent);
     } catch (err) {
-      setError(getErrorMessage(err));
+      const msg = getErrorMessage(err);
+      setError(msg);
+      toastError(msg);
     } finally {
       setSending(false);
     }
@@ -46,9 +50,12 @@ export function VerifyEmailForm({ email = "" }: VerifyEmailFormProps) {
     setSubmitting(true);
     try {
       await authService.verifyOtp({ email: emailValue, otp });
+      toastSuccess(AuthToasts.otpVerified);
       navigate("/login", { replace: true });
     } catch (err) {
-      setError(getErrorMessage(err));
+      const msg = getErrorMessage(err);
+      setError(msg);
+      toastError(msg);
     } finally {
       setSubmitting(false);
     }

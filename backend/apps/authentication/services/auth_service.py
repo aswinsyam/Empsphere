@@ -80,23 +80,6 @@ class AuthService(BaseService):
             "refresh_token": refresh_token,
         }
 
-    def verify_email(self, token):
-        """Verify email with token."""
-        try:
-            payload = jwt.decode(
-                token,
-                settings.JWT_SECRET,
-                algorithms=[settings.JWT_ALGORITHM],
-            )
-        except Exception:
-            raise UnauthorizedException("Invalid verification token.")
-        if payload.get("token_type") != "email_verification":
-            raise UnauthorizedException("Invalid token type.")
-        user_id = payload.get("user_id")
-        if not user_id:
-            raise UnauthorizedException("Invalid token payload.")
-        self.user_repository.update(user_id, {"is_email_verified": True})
-
     def google_login(self, dto):
         """Login with Google credentials."""
         info = self.google_manager.verify_id_token(dto.get("id_token") or "")

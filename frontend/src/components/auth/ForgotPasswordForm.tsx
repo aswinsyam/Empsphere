@@ -9,6 +9,7 @@ import { authService } from "@/services/auth.service";
 import { Button } from "@/components/common/Button";
 import { Input } from "@/components/common/Input";
 import { getErrorMessage } from "@/utils/helpers";
+import { toastSuccess, toastError, AuthToasts } from "@/components/common/ToastProvider";
 
 export function ForgotPasswordForm() {
   const [email, setEmail] = useState("");
@@ -23,9 +24,13 @@ export function ForgotPasswordForm() {
     setLoading(true);
     try {
       await authService.forgotPassword(email);
-      setMessage("If an account exists for that email, a reset link has been sent.");
+      const msg = "If an account exists for that email, a reset link has been sent.";
+      setMessage(msg);
+      toastSuccess(AuthToasts.passwordReset);
     } catch (err) {
-      setError(getErrorMessage(err));
+      const msg = getErrorMessage(err);
+      setError(msg);
+      toastError(msg);
     } finally {
       setLoading(false);
     }

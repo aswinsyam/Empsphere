@@ -9,6 +9,7 @@ import { authService } from "@/services/auth.service";
 import { Button } from "@/components/common/Button";
 import { Input } from "@/components/common/Input";
 import { getErrorMessage } from "@/utils/helpers";
+import { toastSuccess, toastError } from "@/components/common/ToastProvider";
 
 export function ResetPasswordForm() {
   const [searchParams] = useSearchParams();
@@ -23,20 +24,27 @@ export function ResetPasswordForm() {
     e.preventDefault();
     setError(null);
     if (newPassword !== confirmPassword) {
-      setError("Passwords do not match.");
+      const msg = "Passwords do not match.";
+      setError(msg);
+      toastError(msg);
       return;
     }
     setLoading(true);
     try {
       const token = searchParams.get("token");
       if (!token) {
-        setError("Missing reset token.");
+        const msg = "Missing reset token.";
+        setError(msg);
+        toastError(msg);
         return;
       }
       await authService.resetPassword(token, newPassword);
+      toastSuccess("Password reset successfully.");
       navigate("/login", { replace: true });
     } catch (err) {
-      setError(getErrorMessage(err));
+      const msg = getErrorMessage(err);
+      setError(msg);
+      toastError(msg);
     } finally {
       setLoading(false);
     }
