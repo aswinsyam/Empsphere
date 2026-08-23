@@ -2,6 +2,8 @@
  * Generic utility helpers.
  */
 
+import { ENV } from "@/config/env";
+
 /** A single password requirement item for live validation UIs. */
 export interface PasswordRequirement {
   label: string;
@@ -112,4 +114,20 @@ export function getErrorMessage(error: unknown): string {
   }
 
   return "Something went wrong. Please try again.";
+}
+
+/**
+ * Resolve a user ID to an authenticated profile image URL.
+ *
+ * The backend stores the binary image data in MongoDB GridFS and
+ * exposes it through `/api/auth/profile/image/{user_id}/`.
+ */
+export function getProfileImageUrl(userId?: string | null, version?: string | null): string | undefined {
+  if (!userId) return undefined;
+  const backendOrigin = ENV.API_BASE_URL.replace(/\/api\/?$/, "");
+  const url = `${backendOrigin}/api/auth/profile/image/${userId}/`;
+  if (version) {
+    return `${url}?v=${encodeURIComponent(version)}`;
+  }
+  return url;
 }

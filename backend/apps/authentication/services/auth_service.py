@@ -190,7 +190,7 @@ class AuthService(BaseService):
             "email": user.get("email"),
             "phone": user.get("phone"),
             "role": user.get("role"),
-            "profile_image_id": str(user["_id"]) if user.get("profile_image_id") else None,
+            "profile_image_id": str(user["profile_image_id"]) if user.get("profile_image_id") else None,
             "is_email_verified": user.get("is_email_verified"),
             "login_provider": user.get("login_provider"),
             "access_token": access_token,

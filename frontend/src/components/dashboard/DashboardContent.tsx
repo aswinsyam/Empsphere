@@ -1,13 +1,15 @@
 /**
  * DashboardContent.
- * Reusable dashboard layout used by all four role dashboards.
- * Each dashboard passes role-specific configuration (title, accent color,
- * statistics placeholders and recent activity items).
+ *
+ * Shared dashboard shell used by all four role dashboards. Composes
+ * a welcome banner, user profile card, statistics grid, and a recent
+ * activity feed. Each role dashboard passes its own title, accent
+ * gradient, stats, and activities.
  */
 
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar } from "@/components/common/Avatar";
-import { cn } from "@/utils/helpers";
+import { cn, getProfileImageUrl } from "@/utils/helpers";
 
 /** A single statistics card definition. */
 export interface StatCard {
@@ -46,6 +48,11 @@ export function DashboardContent({
   stats,
   activities,
 }: DashboardContentProps) {
+  /**
+   * Shared dashboard shell. Composes a welcome banner, user profile
+   * card, statistics grid, and recent activity feed. Each role dashboard
+   * passes its own configuration to this component.
+   */
   const { user } = useAuth();
 
   const displayName = user?.full_name || user?.email || "User";
@@ -73,7 +80,7 @@ export function DashboardContent({
         <Avatar
           name={user?.full_name}
           email={user?.email}
-          src={user?.profile_image}
+          src={getProfileImageUrl(user?._id, user?.profile_image_id)}
           size="lg"
         />
         <div className="min-w-0 flex-1">

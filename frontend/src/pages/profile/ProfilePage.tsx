@@ -1,7 +1,9 @@
 /**
  * ProfilePage.
- * Displays the current user's profile with editable fields and an
- * option to upload a new profile image.
+ *
+ * Displays the current user's profile summary and provides forms to
+ * update profile fields (first name, last name, phone) and upload a
+ * new profile image. Uses Redux to persist updated user state.
  */
 
 import { useCallback, useRef, useState } from "react";
@@ -14,10 +16,15 @@ import { Button } from "@/components/common/Button";
 import { Input } from "@/components/common/Input";
 import { PageHeader } from "@/components/common/PageHeader";
 import { userService } from "@/services/user.service";
-import { getErrorMessage } from "@/utils/helpers";
+import { getErrorMessage, getProfileImageUrl } from "@/utils/helpers";
 import { toastSuccess, toastError, AuthToasts } from "@/components/common/ToastProvider";
 
 export function ProfilePage() {
+  /**
+   * Displays the current user's profile summary and provides forms to
+   * update profile fields (first name, last name, phone) and upload a
+   * new profile image. Uses Redux to persist updated user state.
+   */
   const { user } = useAuth();
   const dispatch = useDispatch<AppDispatch>();
 
@@ -61,8 +68,8 @@ export function ProfilePage() {
     setSuccess(null);
     setUploading(true);
     try {
-      await userService.uploadProfileImage(file);
-      await refreshProfile();
+      const updatedUser = await userService.uploadProfileImage(file);
+      dispatch(setUser(updatedUser));
       toastSuccess(AuthToasts.profileImageUploaded);
       setSuccess("Profile image updated successfully.");
     } catch (err) {
@@ -95,12 +102,12 @@ export function ProfilePage() {
       {/* Profile summary card */}
       <div className="card flex flex-col items-center gap-4 p-6 sm:flex-row sm:items-center">
         <div className="relative">
-          <Avatar
-            name={user?.full_name}
-            email={user?.email}
-            src={user?.profile_image}
-            size="lg"
-          />
+            <Avatar
+              name={user?.full_name}
+              email={user?.email}
+              src={getProfileImageUrl(user?._id, user?.profile_image_id)}
+              size="lg"
+            />
         </div>
         <div className="min-w-0 flex-1 text-center sm:text-left">
           <p className="text-lg font-semibold text-slate-900">
