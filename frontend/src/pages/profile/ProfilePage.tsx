@@ -9,7 +9,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/store";
-import { setUser } from "@/store/slices/authSlice";
+import { setUser, normalizeUser } from "@/store/slices/authSlice";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar } from "@/components/common/Avatar";
 import { Button } from "@/components/common/Button";
@@ -39,7 +39,7 @@ export function ProfilePage() {
 
   const refreshProfile = useCallback(async () => {
     const profile = await userService.getMe();
-    dispatch(setUser(profile));
+    dispatch(setUser(normalizeUser(profile)));
   }, [dispatch]);
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -69,7 +69,7 @@ export function ProfilePage() {
     setUploading(true);
     try {
       const updatedUser = await userService.uploadProfileImage(file);
-      dispatch(setUser(updatedUser));
+      dispatch(setUser(normalizeUser(updatedUser)));
       toastSuccess(AuthToasts.profileImageUploaded);
       setSuccess("Profile image updated successfully.");
     } catch (err) {
