@@ -5,10 +5,20 @@ Handles HTTP API requests for user-related operations.
 from rest_framework.views import APIView
 from rest_framework import status
 
+from rest_framework.permissions import AllowAny
+
+from django.http import HttpResponse
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import never_cache
+
+from bson import ObjectId
+
 from apps.authentication.services.user_service import UserService
+from apps.authentication.services.profile_image_service import ProfileImageService
 from apps.authentication.serializers.user_serializer import UserSerializer
-from apps.authentication.serializers.auth_serializer import AuthSerializer
 from apps.common.responses.api_response import ApiResponse
+from apps.common.core.collections import Collections
+from apps.common.database.mongo import mongo
 
 
 class UserView(APIView):
@@ -17,10 +27,10 @@ class UserView(APIView):
     Dispatches based on URL path:
     - /me/             -> GET current user profile
     - /profile/        -> GET/PATCH current user profile
-    - /users/create/   -> POST create a new user
     """
 
     def get(self, request):
+        """Return the current authenticated user's profile."""
         service = UserService()
         user = service.get_by_id(str(request.user["_id"]))
         return ApiResponse.success(
@@ -30,37 +40,34 @@ class UserView(APIView):
         )
 
     def patch(self, request):
+        """Update the current authenticated user's profile."""
         service = UserService()
         user = service.get_by_id(str(request.user["_id"]))
         updates = request.data
         updated = service.update(str(user["_id"]), updates)
+        service.log_activity(
+            module="AUTHENTICATION",
+            action="PROFILE_UPDATE",
+            performed_by=str(request.user["_id"]),
+            target_id=str(request.user["_id"]),
+            status="SUCCESS",
+            description="User updated their profile.",
+        )
         return ApiResponse.success(
             message="Profile updated successfully.",
             data=UserSerializer(updated).data,
             status_code=status.HTTP_200_OK,
         )
 
-    def post(self, request):
-        serializer = AuthSerializer(data=request.data)
-        if serializer.is_valid():
-            service = UserService()
-            result = service.create(serializer.validated_data, user_id=str(request.user["_id"]))
-            return ApiResponse.success(
-                message="User created successfully.",
-                data={"user_id": str(result)},
-                status_code=status.HTTP_201_CREATED,
-            )
-        return ApiResponse.error(
-            message="Validation error",
-            errors=serializer.errors,
-            status_code=status.HTTP_400_BAD_REQUEST,
-        )
 
-
+@method_decorator(never_cache, name="dispatch")
 class ProfileImageView(APIView):
     """Handle profile image uploads."""
 
+    permission_classes = [AllowAny]
+
     def post(self, request):
+        """Upload a profile image for the current authenticated user."""
         file = request.FILES.get("profile_image")
         if not file:
             return ApiResponse.error(
@@ -69,18 +76,65 @@ class ProfileImageView(APIView):
             )
         service = UserService()
         user = service.get_by_id(str(request.user["_id"]))
-        # Save uploaded file under MEDIA_ROOT/profiles/
-        from django.core.files.storage import default_storage
-        from django.core.files.base import ContentFile
-        import os
-        filename = default_storage.save(
-            os.path.join("profiles", file.name),
-            ContentFile(file.read()),
+        image_service = ProfileImageService()
+        try:
+            image_service.upload(str(user["_id"]), file)
+        except ValueError as exc:
+            return ApiResponse.error(
+                message=str(exc),
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        updated = service.get_by_id(str(user["_id"]))
+        service.log_activity(
+            module="AUTHENTICATION",
+            action="PROFILE_IMAGE_UPDATE",
+            performed_by=str(user["_id"]),
+            target_id=str(user["_id"]),
+            status="SUCCESS",
+            description="User updated their profile image.",
         )
-        file_url = f"/media/{filename}"
-        updated = service.update_profile_image(str(user["_id"]), file_url)
         return ApiResponse.success(
             message="Profile image uploaded successfully.",
             data=UserSerializer(updated).data,
             status_code=status.HTTP_200_OK,
         )
+
+
+def serve_profile_image(request, user_id):
+    """Serve a user's profile image from MongoDB GridFS.
+
+    This endpoint is intentionally public because:
+    - The URL contains the user's ObjectId, which is not guessable.
+    - It only serves the specific profile image for the specified user.
+    - It allows browser <img> tags to load avatars without JWT headers.
+    """
+    if not user_id:
+        return HttpResponse("Not found", status=404)
+
+    image_service = ProfileImageService()
+
+    users_collection = mongo.get_collection(Collections.USERS)
+    try:
+        user = users_collection.find_one({"_id": ObjectId(user_id)})
+    except Exception:
+        return HttpResponse("Not found", status=404)
+
+    if not user:
+        return HttpResponse("Not found", status=404)
+
+    file_id = user.get("profile_image_id")
+    if not file_id:
+        return HttpResponse("Not found", status=404)
+
+    file_doc = image_service.get(file_id)
+    if not file_doc:
+        return HttpResponse("Not found", status=404)
+
+    response = HttpResponse(
+        file_doc["data"],
+        content_type=file_doc["content_type"],
+    )
+    response["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response["Pragma"] = "no-cache"
+    response["Expires"] = "0"
+    return response

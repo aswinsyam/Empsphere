@@ -4,6 +4,7 @@ Handles authentication business logic.
 """
 from __future__ import annotations
 
+import logging
 import jwt
 from datetime import datetime
 
@@ -18,7 +19,10 @@ from apps.common.base.base_service import BaseService
 from apps.common.exceptions.custom_exception import (
     ConflictException,
     UnauthorizedException,
+    NotFoundException,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class AuthService(BaseService):
@@ -38,6 +42,9 @@ class AuthService(BaseService):
         email = (dto.get("email") or "").strip().lower()
         if self.user_repository.email_exists(email):
             raise ConflictException("Email already exists.")
+        company_secret = dto.get("company_secret") or ""
+        if company_secret != settings.COMPANY_REGISTRATION_SECRET:
+            raise UnauthorizedException("Invalid company registration code.")
         employee_code = self.employee_code_manager.generate()
         hashed_password = self.password_manager.hash_password(dto.get("password", ""))
         first_name = (dto.get("first_name") or "").strip()
@@ -50,12 +57,14 @@ class AuthService(BaseService):
             "email": email,
             "phone": (dto.get("phone") or "").strip(),
             "password": hashed_password,
-            "role": "EMPLOYEE",
+            "role": "ADMIN",
             "department_id": dto.get("department_id"),
             "designation_id": dto.get("designation_id"),
             "created_by": dto.get("created_by"),
         }
-        return self.user_repository.create(document, user_id=dto.get("created_by"))
+        user_id = self.user_repository.create(document, user_id=dto.get("created_by"))
+        self.otp_service.send_otp({"email": email, "purpose": "email_verification"})
+        return user_id
 
     def login(self, dto):
         """Authenticate user and return tokens."""
@@ -66,18 +75,61 @@ class AuthService(BaseService):
             password, user.get("password")
         ):
             raise UnauthorizedException("Invalid email or password.")
+        if user.get("status") == "INACTIVE":
+            raise UnauthorizedException(
+                "Your account is inactive. Please contact the administrator."
+            )
         if not user.get("is_email_verified"):
-            self.otp_service.send_otp({"email": user.get("email"), "purpose": "email_verification"})
-            return {"requires_otp": True, "email": user.get("email")}
+            try:
+                self.otp_service.send_otp({"email": user.get("email"), "purpose": "email_verification"})
+            except Exception as exc:
+                logger.warning("Failed to send email verification OTP for %s: %s", user.get("email"), exc)
+            return {"requires_otp": True, "email": user.get("email"), "purpose": "email_verification"}
         access_token = self._generate_access_token(user)
         refresh_token = self._generate_refresh_token(user)
         self.user_repository.update(str(user["_id"]), {"last_login": datetime.utcnow()})
+        self.log_activity(
+            module="AUTHENTICATION",
+            action="LOGIN",
+            performed_by=str(user["_id"]),
+            target_id=str(user["_id"]),
+            status="SUCCESS",
+            description=f"User {user.get('email')} logged in successfully.",
+        )
+        return self._build_auth_response(user, access_token, refresh_token)
+
+    def verify_first_login(self, dto):
+        """Verify first-login OTP and issue tokens."""
+        email = (dto.get("email") or "").strip().lower()
+        otp_code = dto.get("otp") or ""
+        purpose = dto.get("purpose") or "first_login"
+        self.otp_service.verify_otp({"email": email, "otp": otp_code, "purpose": purpose})
+        user = self.user_repository.get_by_email(email)
+        if not user:
+            raise NotFoundException("User not found.")
+        if user.get("status") == "INACTIVE":
+            raise UnauthorizedException(
+                "Your account is inactive. Please contact the administrator."
+            )
+        self.user_repository.update(str(user["_id"]), {
+            "is_email_verified": True,
+            "first_login_completed": True,
+            "last_login": datetime.utcnow(),
+        })
+        user = self.user_repository.get_by_id(str(user["_id"]))
+        access_token = self._generate_access_token(user)
+        refresh_token = self._generate_refresh_token(user)
+        self.log_activity(
+            module="AUTHENTICATION",
+            action="EMAIL_VERIFY",
+            performed_by=str(user["_id"]),
+            target_id=str(user["_id"]),
+            status="SUCCESS",
+            description="User verified their email address.",
+        )
         return {
-            "user_id": str(user["_id"]),
-            "email": user.get("email"),
-            "role": user.get("role"),
-            "access_token": access_token,
-            "refresh_token": refresh_token,
+            "message": "Email verified successfully.",
+            **self._build_auth_response(user, access_token, refresh_token),
         }
 
     def google_login(self, dto):
@@ -88,42 +140,26 @@ class AuthService(BaseService):
         google_user = self.google_manager.extract_user_info(info)
         user = self.user_repository.get_by_google_id(google_user["google_id"])
         if not user:
-            document = {
-                "employee_code": None,
-                "first_name": google_user["first_name"],
-                "last_name": google_user["last_name"],
-                "full_name": google_user["full_name"],
-                "email": google_user["email"],
-                "phone": "",
-                "password": None,
-                "role": "EMPLOYEE",
-                "department_id": None,
-                "designation_id": None,
-                "created_by": None,
-            }
-            document["login_provider"] = "GOOGLE"
-            document["google_id"] = google_user["google_id"]
-            document["profile_image"] = google_user["profile_image"]
-            document["is_email_verified"] = True
-            user_id = self.user_repository.create(document, user_id=None)
-            user = self.user_repository.get_by_id(user_id)
-        else:
-            self.user_repository.update(
-                str(user["_id"]),
-                {"google_id": google_user["google_id"], "is_email_verified": True},
+            raise NotFoundException(
+                "No account found for this Google email. Please register first."
             )
+        if user.get("status") == "INACTIVE":
+            raise UnauthorizedException(
+                "Your account is inactive. Please contact the administrator."
+            )
+        self.user_repository.update(
+            str(user["_id"]),
+            {"google_id": google_user["google_id"], "is_email_verified": True},
+        )
+        user = self.user_repository.get_by_id(str(user["_id"]))
         access_token = self._generate_access_token(user)
         refresh_token = self._generate_refresh_token(user)
-        return {
-            "user_id": str(user["_id"]),
-            "email": user.get("email"),
-            "role": user.get("role"),
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-        }
+        return self._build_auth_response(user, access_token, refresh_token)
 
     def refresh_token(self, refresh_token):
         """Refresh access token."""
+        if self.token_blacklist_manager.is_blacklisted(refresh_token):
+            raise UnauthorizedException("Token has been blacklisted.")
         try:
             payload = jwt.decode(refresh_token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
         except Exception:
@@ -133,11 +169,33 @@ class AuthService(BaseService):
         user = self.user_repository.get_by_id(payload.get("user_id"))
         if not user:
             raise UnauthorizedException("User not found.")
+        if user.get("status") == "INACTIVE":
+            raise UnauthorizedException(
+                "Your account is inactive. Please contact the administrator."
+            )
         # Rotate token
         self.token_blacklist_manager.blacklist(refresh_token)
         access_token = self._generate_access_token(user)
         new_refresh_token = self._generate_refresh_token(user)
         return {"access_token": access_token, "refresh_token": new_refresh_token}
+
+    def _build_auth_response(self, user, access_token, refresh_token):
+        """Build standardized authentication response payload."""
+        return {
+            "user_id": str(user["_id"]),
+            "employee_code": user.get("employee_code"),
+            "first_name": user.get("first_name"),
+            "last_name": user.get("last_name"),
+            "full_name": user.get("full_name"),
+            "email": user.get("email"),
+            "phone": user.get("phone"),
+            "role": user.get("role"),
+            "profile_image_id": str(user["_id"]) if user.get("profile_image_id") else None,
+            "is_email_verified": user.get("is_email_verified"),
+            "login_provider": user.get("login_provider"),
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+        }
 
     def _generate_access_token(self, user):
         """Generate access token."""

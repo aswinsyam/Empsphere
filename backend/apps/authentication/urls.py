@@ -8,7 +8,7 @@ from django.urls import path
 
 from apps.authentication.views.auth_view import AuthView
 from apps.authentication.views.otp_view import OTPView
-from apps.authentication.views.user_view import UserView, ProfileImageView
+from apps.authentication.views.user_view import UserView, ProfileImageView, serve_profile_image
 from apps.authentication.views.password_view import PasswordView
 from apps.authentication.views.google_login_view import GoogleLoginView
 from apps.authentication.views.verify_email_view import VerifyEmailView
@@ -27,6 +27,7 @@ urlpatterns = [
     # Profile
     path("profile/", UserView.as_view(), name="profile"),
     path("profile/image/", ProfileImageView.as_view(), name="profile-image"),
+    path("profile/image/<str:user_id>/", serve_profile_image, name="profile-image-user"),
 
     # OTP
     path("send-otp/", OTPView.as_view(), name="send-otp"),
@@ -34,10 +35,7 @@ urlpatterns = [
 
     # Password
     path("change-password/", PasswordView.as_view(), name="change-password"),
+    path("set-password/", PasswordView.as_view(), name="set-password"),
     path("forgot-password/", PasswordView.as_view(), name="forgot-password"),
     path("reset-password/", PasswordView.as_view(), name="reset-password"),
-    path("set-password/", PasswordView.as_view(), name="set-password"),
-
-    # User management
-    path("users/create/", UserView.as_view(), name="create-user"),
 ]
