@@ -1,6 +1,9 @@
 /**
  * Input.
- * Reusable labeled input field.
+ *
+ * Reusable labeled text input. Extends the native `<input>` element
+ * with optional label, error message, and hint text. Used across all
+ * forms in the application.
  */
 
 import { InputHTMLAttributes, ReactNode } from "react";
@@ -13,6 +16,11 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export function Input({ label, error, hint, className, id, ...props }: InputProps) {
+  /**
+   * Reusable labeled input. Shows a label, error message, and optional
+   * hint text. Extends native `<input>` attributes so it works in any
+   * form context.
+   */
   const inputId = id || props.name;
 
   return (

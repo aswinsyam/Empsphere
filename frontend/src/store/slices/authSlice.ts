@@ -121,8 +121,10 @@ export const googleLogin = createAsyncThunk<LoginResult, string>(
   "auth/googleLogin",
   async (idToken) => {
     const result = await authService.googleLogin(idToken);
-    // Google login always returns both tokens.
-    TokenUtil.setTokens(result.access_token!, result.refresh_token!);
+    const requiresOtp = (result as { requires_otp?: boolean }).requires_otp;
+    if (!requiresOtp) {
+      TokenUtil.setTokens(result.access_token!, result.refresh_token!);
+    }
     return result;
   }
 );
@@ -188,7 +190,10 @@ const authSlice = createSlice({
     builder.addCase(googleLogin.fulfilled, (state, action) => {
       state.loading = false;
       state.error = null;
-      state.user = userFromLogin(action.payload);
+      const requiresOtp = (action.payload as { requires_otp?: boolean }).requires_otp;
+      if (!requiresOtp) {
+        state.user = userFromLogin(action.payload);
+      }
     });
     builder.addCase(googleLogin.rejected, (state, action) => {
       state.loading = false;

@@ -18,8 +18,6 @@ class Messages:
     TOKEN_REFRESHED = "Access token refreshed successfully."
 
     PASSWORD_CHANGED = "Password changed successfully."
-    PASSWORD_RESET = "Password reset successfully."
-    PASSWORD_RESET_LINK_SENT = "Password reset link has been sent to your email."
 
     EMAIL_VERIFIED = "Email verified successfully."
     EMAIL_VERIFICATION_SENT = "Verification email sent successfully."
@@ -78,11 +76,14 @@ class Messages:
     LEAVE_REJECTED = "Leave rejected successfully."
 
     # ==========================================================
-    # Payroll
+    # Payment
     # ==========================================================
 
-    PAYROLL_CREATED = "Payroll generated successfully."
-    PAYSLIP_GENERATED = "Payslip generated successfully."
+    PAYMENT_CREATED = "Payment initiated successfully."
+    PAYMENT_VERIFIED = "Payment verified successfully."
+    PAYMENT_FAILED = "Payment failed."
+    PAYMENT_CANCELLED = "Payment cancelled successfully."
+    PAYMENT_PENDING = "Payment is pending."
 
     # ==========================================================
     # Notification

@@ -1,7 +1,7 @@
 /**
  * Configured Axios instance.
  * - Base URL from env.
- * - Attaches the access token to every request.
+ * - Attaches the access token to every request except public endpoints.
  * - Attempts token refresh on 401 once before retrying.
  * - Stores both new tokens when the backend rotates the refresh token.
  * - Clears auth and notifies the app when refresh fails.
@@ -22,6 +22,24 @@ declare module "axios" {
   }
 }
 
+/** Public auth endpoints that do not require an access token. */
+const PUBLIC_AUTH_ENDPOINTS = [
+  "/auth/login/",
+  "/auth/register/",
+  "/auth/logout/",
+  "/auth/refresh-token/",
+  "/auth/verify-email/",
+  "/auth/google-login/",
+  "/auth/send-otp/",
+  "/auth/verify-otp/",
+  "/auth/set-password/",
+];
+
+function isPublicEndpoint(url: string | undefined): boolean {
+  if (!url) return false;
+  return PUBLIC_AUTH_ENDPOINTS.some((endpoint) => url.includes(endpoint));
+}
+
 /** Custom event fired when the refresh token can no longer restore auth. */
 export const AUTH_EXPIRED_EVENT = "auth:expired";
 
@@ -30,29 +48,17 @@ function dispatchAuthExpired() {
   window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
 }
 
-/** Read the backend error message from an axios error. */
-export function extractErrorMessage(error: unknown): string {
-  if (axios.isAxiosError(error)) {
-    const data = error.response?.data as
-      | { message?: string; errors?: unknown }
-      | undefined;
-    if (data?.message) return data.message;
-    if (data?.errors) return JSON.stringify(data.errors);
-    return error.message;
-  }
-  if (error instanceof Error) return error.message;
-  return "Something went wrong.";
-}
-
 export const api: AxiosInstance = axios.create({
   baseURL: ENV.API_BASE_URL,
 });
 
-// Attach access token to every request.
+// Attach access token to every request except public endpoints.
 api.interceptors.request.use((config) => {
-  const token = TokenUtil.getAccessToken();
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  if (!isPublicEndpoint(config.url)) {
+    const token = TokenUtil.getAccessToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
   }
   return config;
 });
@@ -69,10 +75,7 @@ api.interceptors.response.use(
       error.response?.status === 401 &&
       original &&
       !original._retry &&
-      !original.url?.includes("login") &&
-      !original.url?.includes("refresh") &&
-      !original.url?.includes("verify-otp") &&
-      !original.url?.includes("send-otp")
+      !isPublicEndpoint(original.url)
     ) {
       original._retry = true;
       const refreshToken = TokenUtil.getRefreshToken();

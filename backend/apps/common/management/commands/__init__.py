@@ -1,1 +1,1 @@
-# Management commands for common app.
+"""Management commands for common app."""

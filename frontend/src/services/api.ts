@@ -6,8 +6,9 @@
 import { api } from "@/config/axios";
 import { ApiResponse } from "@/types/api";
 
+/** Typed HTTP client that unwraps the standard `ApiResponse` envelope. */
 export const http = {
-  async get<T>(url: string, params?: Record<string, unknown>): Promise<T> {
+  async get<T>(url: string, params?: unknown): Promise<T> {
     const res = await api.get<ApiResponse<T>>(url, { params });
     return res.data.data;
   },

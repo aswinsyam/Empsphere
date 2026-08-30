@@ -1,6 +1,10 @@
 /**
  * RegisterForm.
- * New account registration form.
+ *
+ * New user registration form. Collects identity, contact, and password
+ * details plus a company registration secret. Validates password
+ * strength and confirmation before submitting. Supports Google sign-in
+ * as an alternative.
  */
 
 import { useState } from "react";
@@ -14,6 +18,11 @@ import { getDashboardRoute } from "@/utils/constants";
 import { toastSuccess, toastError, AuthToasts } from "@/components/common/ToastProvider";
 
 export function RegisterForm() {
+  /**
+   * New account registration form. Validates password strength and
+   * confirmation, collects a company registration secret, and supports
+   * Google sign-in. On success, redirects to the email verification page.
+   */
   const { register, googleLogin, loading } = useAuth();
   const navigate = useNavigate();
 

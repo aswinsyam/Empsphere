@@ -15,7 +15,7 @@ class AuditService:
         self.collection = mongo.get_collection(Collections.ACTIVITY_LOGS)
 
     def log(self, module, action, performed_by, target_id, status, description, metadata=None):
-        """Insert an audit log document."""
+        """Insert an audit log document into MongoDB."""
         from datetime import datetime
         self.collection.insert_one({
             "module": module,

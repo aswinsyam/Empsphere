@@ -8,28 +8,39 @@ import { departmentService } from "@/services/department.service";
 import {
   CreateDepartmentPayload,
   Department,
+  DepartmentListParams,
+  DepartmentListResponse,
   UpdateDepartmentPayload,
 } from "@/types/department";
 
 interface DepartmentState {
   departments: Department[];
+  total_records: number;
+  total_pages: number;
+  page: number;
+  page_size: number;
   loading: boolean;
   error: string | null;
 }
 
 const initialState: DepartmentState = {
   departments: [],
+  total_records: 0,
+  total_pages: 0,
+  page: 1,
+  page_size: 10,
   loading: false,
   error: null,
 };
 
-/** Fetch all departments. */
-export const fetchDepartments = createAsyncThunk<Department[], void>(
-  "department/fetchAll",
-  async () => {
-    return departmentService.list();
-  }
-);
+/** Fetch departments with optional search and pagination. */
+export const fetchDepartments = createAsyncThunk<
+  DepartmentListResponse,
+  DepartmentListParams | void
+>("department/fetchAll", async (params) => {
+  const res = await departmentService.list(params || {});
+  return res;
+});
 
 /** Create a department. */
 export const createDepartment = createAsyncThunk<
@@ -73,9 +84,13 @@ const departmentSlice = createSlice({
     });
     builder.addCase(
       fetchDepartments.fulfilled,
-      (state, action: PayloadAction<Department[]>) => {
+      (state, action: PayloadAction<DepartmentListResponse>) => {
         state.loading = false;
-        state.departments = action.payload;
+        state.departments = action.payload.departments;
+        state.total_records = action.payload.total_records;
+        state.total_pages = action.payload.total_pages;
+        state.page = action.payload.page;
+        state.page_size = action.payload.page_size;
       }
     );
     builder.addCase(fetchDepartments.rejected, (state, action) => {

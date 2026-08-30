@@ -35,5 +35,5 @@ class GoogleManager:
             "first_name": info.get("given_name", ""),
             "last_name": info.get("family_name", ""),
             "full_name": info.get("name", ""),
-            "profile_image": info.get("picture", ""),
+            "profile_image_id": info.get("picture", ""),
         }

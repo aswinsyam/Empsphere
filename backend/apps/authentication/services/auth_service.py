@@ -13,6 +13,7 @@ from apps.authentication.managers.employee_code_manager import EmployeeCodeManag
 from apps.authentication.managers.token_blacklist_manager import TokenBlacklistManager
 from apps.authentication.services.otp_service import OTPService
 from apps.common.config.settings import settings
+from apps.common.core.otp import OTPPurpose
 from apps.common.security.password_manager import PasswordManager
 from apps.common.security.google_manager import GoogleManager
 from apps.common.base.base_service import BaseService
@@ -63,7 +64,7 @@ class AuthService(BaseService):
             "created_by": dto.get("created_by"),
         }
         user_id = self.user_repository.create(document, user_id=dto.get("created_by"))
-        self.otp_service.send_otp({"email": email, "purpose": "email_verification"})
+        self.otp_service.send_otp({"email": email, "purpose": OTPPurpose.EMAIL_VERIFICATION})
         return user_id
 
     def login(self, dto):
@@ -81,10 +82,10 @@ class AuthService(BaseService):
             )
         if not user.get("is_email_verified"):
             try:
-                self.otp_service.send_otp({"email": user.get("email"), "purpose": "email_verification"})
+                self.otp_service.send_otp({"email": user.get("email"), "purpose": OTPPurpose.EMAIL_VERIFICATION})
             except Exception as exc:
                 logger.warning("Failed to send email verification OTP for %s: %s", user.get("email"), exc)
-            return {"requires_otp": True, "email": user.get("email"), "purpose": "email_verification"}
+            return {"requires_otp": True, "email": user.get("email"), "purpose": OTPPurpose.EMAIL_VERIFICATION}
         access_token = self._generate_access_token(user)
         refresh_token = self._generate_refresh_token(user)
         self.user_repository.update(str(user["_id"]), {"last_login": datetime.utcnow()})
@@ -102,7 +103,7 @@ class AuthService(BaseService):
         """Verify first-login OTP and issue tokens."""
         email = (dto.get("email") or "").strip().lower()
         otp_code = dto.get("otp") or ""
-        purpose = dto.get("purpose") or "first_login"
+        purpose = dto.get("purpose") or OTPPurpose.FIRST_LOGIN
         self.otp_service.verify_otp({"email": email, "otp": otp_code, "purpose": purpose})
         user = self.user_repository.get_by_email(email)
         if not user:
@@ -140,18 +141,28 @@ class AuthService(BaseService):
         google_user = self.google_manager.extract_user_info(info)
         user = self.user_repository.get_by_google_id(google_user["google_id"])
         if not user:
-            raise NotFoundException(
-                "No account found for this Google email. Please register first."
-            )
+            existing_user = self.user_repository.get_by_email(google_user["email"]) if google_user.get("email") else None
+            if existing_user:
+                user = existing_user
+                if not user.get("is_email_verified"):
+                    try:
+                        self.otp_service.send_otp({"email": user.get("email"), "purpose": OTPPurpose.EMAIL_VERIFICATION})
+                    except Exception as exc:
+                        logger.warning("Failed to send email verification OTP for %s: %s", user.get("email"), exc)
+                    return {"requires_otp": True, "email": user.get("email"), "purpose": OTPPurpose.EMAIL_VERIFICATION}
+                self.user_repository.update(
+                    str(user["_id"]),
+                    {"google_id": google_user["google_id"], "is_email_verified": True},
+                )
+                user = self.user_repository.get_by_id(str(user["_id"]))
+            else:
+                raise NotFoundException(
+                    "No account found for this Google email. Please register first."
+                )
         if user.get("status") == "INACTIVE":
             raise UnauthorizedException(
                 "Your account is inactive. Please contact the administrator."
             )
-        self.user_repository.update(
-            str(user["_id"]),
-            {"google_id": google_user["google_id"], "is_email_verified": True},
-        )
-        user = self.user_repository.get_by_id(str(user["_id"]))
         access_token = self._generate_access_token(user)
         refresh_token = self._generate_refresh_token(user)
         return self._build_auth_response(user, access_token, refresh_token)

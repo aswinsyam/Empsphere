@@ -1,3 +1,7 @@
+<!--
+  OTP email template for EmpSphere.
+  Used by OTPService to deliver one-time passwords to users.
+-->
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -18,10 +22,10 @@
             <tr>
               <td style="padding:32px;">
                 <h1 style="margin:0 0 12px;font-size:20px;color:#0f172a;">
-                  Your one-time code
+                  {% if purpose == "forgot_password" %}Reset your password{% else %}Your one-time code{% endif %}
                 </h1>
                 <p style="margin:0 0 20px;font-size:14px;color:#475569;line-height:1.6;">
-                  Use the code below to continue. This code is valid for
+                  {% if purpose == "forgot_password" %}Use the code below to reset your EmpSphere password.{% else %}Use the code below to continue.{% endif %} This code is valid for
                   <strong>10 minutes</strong> and can only be used once.
                 </p>
                 <div style="background-color:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;padding:20px;text-align:center;">

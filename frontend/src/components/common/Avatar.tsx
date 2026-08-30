@@ -1,7 +1,9 @@
 /**
  * Avatar.
- * Displays the user's profile image, or a initials fallback when no image
- * is available. Reused across the navbar and dashboards.
+ *
+ * Displays a user's profile image when available, falling back to
+ * initials derived from `name` or `email`. Reused in the navbar,
+ * dashboard cards, and profile page.
  */
 
 import { cn } from "@/utils/helpers";
@@ -38,6 +40,10 @@ export function Avatar({
   size = "md",
   className,
 }: AvatarProps) {
+  /**
+   * Displays a user's profile image or initials fallback. Derives
+   * initials from `name` or `email` when no image source is provided.
+   */
   const initials = getInitials(name, email);
 
   return (
@@ -52,7 +58,7 @@ export function Avatar({
         <img
           src={src}
           alt={name || email || "User"}
-          className="h-full w-full object-cover"
+          className="block h-full w-full min-h-full min-w-full object-cover"
           referrerPolicy="no-referrer"
         />
       ) : (

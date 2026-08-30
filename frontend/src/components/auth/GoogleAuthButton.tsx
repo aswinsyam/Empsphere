@@ -1,7 +1,12 @@
 /**
  * GoogleAuthButton.
- * Renders the official Google sign-in button and calls the given callback
- * with the Google ID token. Used by both the login and register forms.
+ *
+ * Renders the Google "Continue with Google" button using Google Identity
+ * Services (GIS). Loads the GIS script implicitly and passes the
+ * resulting ID token to the `onCredential` callback. Gracefully handles
+ * missing client ID or failed script load with an error message.
+ *
+ * @param onCredential - Called with the Google ID token on successful sign-in.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -34,7 +39,16 @@ interface GoogleAuthButtonProps {
   onCredential: (credential: string) => void;
 }
 
+let googleInitialized = false;
+let globalCallback: ((credential: string) => void) | null = null;
+
 export function GoogleAuthButton({ onCredential }: GoogleAuthButtonProps) {
+  /**
+   * Renders the Google "Continue with Google" button using Google
+   * Identity Services (GIS). Passes the resulting ID token to the
+   * `onCredential` callback. Handles missing client ID and script load
+   * failures gracefully.
+   */
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,17 +72,25 @@ export function GoogleAuthButton({ onCredential }: GoogleAuthButtonProps) {
       return;
     }
 
-    id.initialize({
-      client_id: clientId,
-      callback: (response) => onCredential(response.credential),
-    });
+    globalCallback = (credential: string) => onCredential(credential);
+
+    if (!googleInitialized) {
+      id.initialize({
+        client_id: clientId,
+        callback: (response) => {
+          if (globalCallback) {
+            globalCallback(response.credential);
+          }
+        },
+      });
+      googleInitialized = true;
+    }
 
     if (containerRef.current) {
       id.renderButton(containerRef.current, {
         theme: "outline",
         size: "large",
         shape: "pill",
-        width: "100%",
         text: "continue_with",
       });
     }

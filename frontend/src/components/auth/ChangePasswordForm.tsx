@@ -1,6 +1,9 @@
 /**
  * ChangePasswordForm.
- * Allows an authenticated user to update their password.
+ *
+ * Allows an authenticated user to update their password. Requires the
+ * current password plus a new password that meets the application's
+ * strength requirements. Navigates to the dashboard on success.
  */
 
 import { useState } from "react";
@@ -12,6 +15,11 @@ import { getErrorMessage, getPasswordRequirements } from "@/utils/helpers";
 import { toastSuccess, toastError, AuthToasts } from "@/components/common/ToastProvider";
 
 export function ChangePasswordForm() {
+  /**
+   * Allows an authenticated user to update their password. Requires
+   * the current password and a new password that meets the application's
+   * strength requirements. Navigates to the dashboard on success.
+   */
   const navigate = useNavigate();
 
   const [currentPassword, setCurrentPassword] = useState("");

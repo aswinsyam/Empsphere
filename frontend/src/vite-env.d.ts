@@ -1,3 +1,11 @@
+/**
+ * Vite type augmentation.
+ *
+ * Declares the shape of `import.meta.env` so TypeScript recognizes
+ * the custom environment variables used by the frontend.
+ * Corresponds to variables defined in `.env` / `.env.local`.
+ */
+
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {

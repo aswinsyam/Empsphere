@@ -1,11 +1,17 @@
 /**
  * NotFoundPage.
- * 404 error screen.
+ *
+ * 404 error screen. Rendered when the user navigates to a route that
+ * does not exist, with a link back to the dashboard.
  */
 
 import { Link } from "react-router-dom";
 
 export function NotFoundPage() {
+  /**
+   * Renders a 404 error page with a link back to the dashboard.
+   * Displayed by the catch-all route when no other route matches.
+   */
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 text-center">
       <p className="text-6xl font-bold text-brand-600">404</p>

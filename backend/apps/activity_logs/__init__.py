@@ -1,0 +1,1 @@
+"""Activity logs app package."""

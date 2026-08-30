@@ -6,6 +6,7 @@
 const ACCESS_TOKEN_KEY = "emp_access_token";
 const REFRESH_TOKEN_KEY = "emp_refresh_token";
 
+/** Utility for reading and writing JWT tokens to localStorage. */
 export const TokenUtil = {
   /** Get the access token. */
   getAccessToken(): string | null {

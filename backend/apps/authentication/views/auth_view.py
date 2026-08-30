@@ -5,6 +5,8 @@ Handles HTTP API requests for authentication flows.
 from rest_framework.views import APIView
 from rest_framework import status
 
+from rest_framework.permissions import AllowAny
+
 from apps.authentication.services.auth_service import AuthService
 from apps.authentication.serializers.auth_serializer import AuthSerializer
 from apps.common.responses.api_response import ApiResponse
@@ -18,8 +20,11 @@ class AuthView(APIView):
     - /login/     -> login
     - /logout/    -> logout
     """
+    permission_classes = [AllowAny]
+    authentication_classes = []
 
     def post(self, request):
+        """Dispatch authentication requests to register/login/logout handlers."""
         path = request.path.rstrip("/")
         action = path.rsplit("/", 1)[-1]
 
@@ -36,6 +41,7 @@ class AuthView(APIView):
             )
 
     def _register(self, request):
+        """Register a new user via AuthService."""
         serializer = AuthSerializer(data=request.data)
         if serializer.is_valid():
             service = AuthService()
@@ -52,6 +58,7 @@ class AuthView(APIView):
         )
 
     def _login(self, request):
+        """Authenticate a user and return tokens or trigger OTP."""
         serializer = AuthSerializer(data=request.data)
         if serializer.is_valid():
             service = AuthService()
@@ -74,10 +81,22 @@ class AuthView(APIView):
         )
 
     def _logout(self, request):
+        """Blacklist the refresh token and end the session."""
         from apps.authentication.managers.token_blacklist_manager import TokenBlacklistManager
         refresh_token = request.data.get("refresh_token")
         if refresh_token:
             TokenBlacklistManager().blacklist(refresh_token)
+        user_id = str(request.user["_id"]) if isinstance(request.user, dict) else None
+        if user_id:
+            from apps.common.base.base_service import BaseService
+            BaseService().log_activity(
+                module="AUTHENTICATION",
+                action="LOGOUT",
+                performed_by=user_id,
+                target_id=user_id,
+                status="SUCCESS",
+                description="User logged out successfully.",
+            )
         return ApiResponse.success(
             message="Logged out successfully.",
             data=None,

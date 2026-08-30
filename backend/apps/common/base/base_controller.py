@@ -19,11 +19,13 @@ class BaseController:
         message: str,
         data=None,
         status_code=status.HTTP_200_OK,
+        meta=None,
     ):
         return ApiResponse.success(
             message=message,
             data=data,
             status_code=status_code,
+            meta=meta,
         )
 
     @staticmethod

@@ -10,20 +10,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar } from "@/components/common/Avatar";
 import { cn, getProfileImageUrl } from "@/utils/helpers";
-
-/** A single statistics card definition. */
-export interface StatCard {
-  label: string;
-  value: string | number;
-  icon: string;
-  accent?: string;
-}
-
-/** A single recent-activity row. */
-export interface ActivityItem {
-  title: string;
-  time: string;
-}
+import { StatItem, ActivityItem } from "@/types/dashboard";
 
 interface DashboardContentProps {
   /** Page heading shown in the welcome card. */
@@ -33,7 +20,7 @@ interface DashboardContentProps {
   /** Accent gradient classes for the welcome banner. */
   accentClasses?: string;
   /** Statistics cards to render (placeholder values). */
-  stats: StatCard[];
+  stats: StatItem[];
   /** Recent activity placeholder rows. */
   activities: ActivityItem[];
 }

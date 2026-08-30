@@ -4,6 +4,8 @@ Handles OTP database operations.
 """
 from __future__ import annotations
 
+from datetime import datetime
+
 from bson import ObjectId
 
 from apps.common.database.mongo import mongo
@@ -29,14 +31,23 @@ class OTPRepository:
         return str(result.inserted_id)
 
     def mark_used(self, otp_id):
-        """Mark OTP as used."""
+        """Atomically mark an OTP as used.
+
+        Returns ``True`` only for the caller that transitioned the record
+        from unused to used, so a single OTP can never be consumed twice
+        (even by concurrent requests).
+        """
         collection = mongo.get_collection(Collections.OTPS)
-        collection.update_one({"_id": ObjectId(otp_id)}, {"$set": {"is_used": True}})
+        result = collection.update_one(
+            {"_id": ObjectId(otp_id), "is_used": False},
+            {"$set": {"is_used": True, "used_at": datetime.utcnow()}},
+        )
+        return result.modified_count == 1
 
     def invalidate_active(self, email, purpose):
         """Invalidate existing active OTPs."""
         collection = mongo.get_collection(Collections.OTPS)
         collection.update_many(
             {"email": email, "purpose": purpose, "is_used": False},
-            {"$set": {"is_used": True}},
+            {"$set": {"is_used": True, "used_at": datetime.utcnow()}},
         )

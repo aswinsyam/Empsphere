@@ -4,10 +4,11 @@ MongoDB schema definitions for user.
 """
 from __future__ import annotations
 
+import re
+
 from bson import ObjectId
 from datetime import datetime
 
-from apps.common.config.settings import settings
 from apps.common.core.collections import Collections
 from apps.common.database.mongo import mongo
 
@@ -17,9 +18,11 @@ class UserSchema:
 
     @staticmethod
     def get_by_email(email):
-        """Get user by email."""
+        """Get user by email (case-insensitive)."""
         collection = mongo.get_collection(Collections.USERS)
-        return collection.find_one({"email": email})
+        return collection.find_one({
+            "email": {"$regex": f"^{re.escape(email)}$", "$options": "i"}
+        })
 
     @staticmethod
     def get_by_id(user_id):
@@ -44,8 +47,14 @@ class UserSchema:
         """Create a new user document."""
         collection = mongo.get_collection(Collections.USERS)
         document["is_email_verified"] = False
+        document["first_login_completed"] = False
+        document["status"] = document.get("status", "ACTIVE")
+        document["joining_date"] = document.get("joining_date")
+        document["profile_image_id"] = None
+        document["is_active"] = document.get("is_active", True)
         document["created_at"] = datetime.utcnow()
         document["updated_at"] = datetime.utcnow()
+        document["created_by"] = user_id
         result = collection.insert_one(document)
         return str(result.inserted_id)
 
@@ -54,7 +63,8 @@ class UserSchema:
         """Update user document."""
         collection = mongo.get_collection(Collections.USERS)
         updates["updated_at"] = datetime.utcnow()
-        return collection.update_one({"_id": ObjectId(user_id)}, {"$set": updates})
+        collection.update_one({"_id": ObjectId(user_id)}, {"$set": updates})
+        return UserSchema.get_by_id(user_id)
 
     @staticmethod
     def soft_delete(user_id):

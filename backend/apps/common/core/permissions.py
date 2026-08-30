@@ -76,12 +76,12 @@ PERM_LEAVE_READ = "leave.read"
 
 
 # ==========================================================
-# Payroll
+# Payment
 # ==========================================================
 
-PERM_PAYROLL_CREATE = "payroll.create"
-PERM_PAYROLL_READ = "payroll.read"
-PERM_PAYROLL_UPDATE = "payroll.update"
+PERM_PAYMENT_CREATE = "payment.create"
+PERM_PAYMENT_READ = "payment.read"
+PERM_PAYMENT_VERIFY = "payment.verify"
 
 
 # ==========================================================
@@ -251,20 +251,24 @@ ROLE_PERMISSIONS = {
         Role.EMPLOYEE,
     },
 
-    # ---------------- Payroll ----------------
+    # ---------------- Payment ----------------
 
-    PERM_PAYROLL_CREATE: {
-        Role.ADMIN,
-    },
-
-    PERM_PAYROLL_READ: {
+    PERM_PAYMENT_CREATE: {
         Role.SUPER_ADMIN,
         Role.ADMIN,
         Role.HR_MANAGER,
         Role.EMPLOYEE,
     },
 
-    PERM_PAYROLL_UPDATE: {
+    PERM_PAYMENT_READ: {
+        Role.SUPER_ADMIN,
+        Role.ADMIN,
+        Role.HR_MANAGER,
+        Role.EMPLOYEE,
+    },
+
+    PERM_PAYMENT_VERIFY: {
+        Role.SUPER_ADMIN,
         Role.ADMIN,
     },
 

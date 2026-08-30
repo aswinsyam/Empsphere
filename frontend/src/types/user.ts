@@ -14,7 +14,7 @@ export interface UserProfile {
   role: string;
   department_id?: string | null;
   designation_id?: string | null;
-  profile_image?: string;
+  profile_image_id?: string;
   login_provider?: string;
   is_email_verified?: boolean;
   is_active?: boolean;

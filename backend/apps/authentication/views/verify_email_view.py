@@ -5,7 +5,9 @@ Handles HTTP API requests for email verification via OTP.
 from rest_framework.views import APIView
 from rest_framework import status
 
-from apps.authentication.services.otp_service import OTPService
+from rest_framework.permissions import AllowAny
+
+from apps.authentication.services.auth_service import AuthService
 from apps.authentication.serializers.otp_serializer import VerifyOTPSerializer
 from apps.common.responses.api_response import ApiResponse
 
@@ -13,11 +15,14 @@ from apps.common.responses.api_response import ApiResponse
 class VerifyEmailView(APIView):
     """Handle email verification requests via OTP."""
 
+    permission_classes = [AllowAny]
+
     def post(self, request):
+        """Verify an email address using a one-time OTP code."""
         serializer = VerifyOTPSerializer(data=request.data)
         if serializer.is_valid():
-            service = OTPService()
-            result = service.verify_otp(serializer.validated_data)
+            auth_service = AuthService()
+            result = auth_service.verify_first_login(serializer.validated_data)
             return ApiResponse.success(
                 message=result["message"],
                 data=result,

@@ -1,6 +1,9 @@
 /**
  * Modal.
- * A simple accessible modal dialog.
+ *
+ * Accessible dialog overlay. Closes on Escape key, backdrop click, or
+ * the close button. Locks body scroll while open to prevent background
+ * interaction.
  */
 
 import { ReactNode, useEffect } from "react";
@@ -13,6 +16,11 @@ interface ModalProps {
 }
 
 export function Modal({ open, title, onClose, children }: ModalProps) {
+  /**
+   * Accessible modal dialog. Closes on Escape key, backdrop click, or
+   * the close button. Locks body scroll while open to prevent background
+   * interaction.
+   */
   // Close on Escape and lock body scroll while open.
   useEffect(() => {
     if (!open) return;

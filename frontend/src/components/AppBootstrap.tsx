@@ -1,11 +1,11 @@
 /**
  * AppBootstrap.
- * Restores the authenticated session on app load by validating the
- * stored access token and fetching the current user profile.
  *
- * It also listens for the `auth:expired` event dispatched by the axios
- * interceptor when the refresh token can no longer restore auth, so the
- * app can clear auth state and redirect to login.
+ * Session-restoration component mounted at the application root.
+ * On mount it checks for a stored access token and dispatches `fetchMe`
+ * to validate the session. It also listens for `auth:expired` events
+ * (dispatched by the axios interceptor) to clear auth state and redirect
+ * to login when refresh tokens are exhausted.
  */
 
 import { useEffect } from "react";
@@ -22,6 +22,12 @@ import { TokenUtil } from "@/utils/token";
 import { ROUTES } from "@/utils/constants";
 
 export function AppBootstrap() {
+  /**
+   * Restores the session on app load by checking for a stored access
+   * token and dispatching `fetchMe`. Also listens for `auth:expired`
+   * events (dispatched by the axios interceptor) to clear auth state
+   * and redirect to login when refresh tokens are exhausted.
+   */
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
 

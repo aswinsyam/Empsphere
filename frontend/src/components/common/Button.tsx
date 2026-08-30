@@ -1,6 +1,9 @@
 /**
  * Button.
- * Reusable button with variants for primary, ghost, and danger actions.
+ *
+ * Reusable button supporting three visual variants (`primary`, `ghost`,
+ * `danger`) and an optional loading spinner. Used throughout forms and
+ * action bars.
  */
 
 import { ButtonHTMLAttributes, ReactNode } from "react";
@@ -28,6 +31,10 @@ export function Button({
   disabled,
   ...props
 }: ButtonProps) {
+  /**
+   * Reusable button with three variants (`primary`, `ghost`, `danger`)
+   * and an optional loading spinner. Disables itself while loading.
+   */
   return (
     <button
       className={cn(variantClasses[variant], className)}

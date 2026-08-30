@@ -1,7 +1,10 @@
 /**
  * LoginForm.
- * Single clean login screen: email + password, Google button,
- * forgot-password link, and register link.
+ *
+ * Handles email/password authentication and Google sign-in.
+ * On success it navigates to the role-specific dashboard. If the
+ * backend indicates OTP is required (e.g. first login or email
+ * verification), it redirects to the verify-email page.
  */
 
 import { useState } from "react";
@@ -11,10 +14,15 @@ import { Button } from "@/components/common/Button";
 import { Input } from "@/components/common/Input";
 import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
 import { getErrorMessage } from "@/utils/helpers";
-import { getDashboardRoute } from "@/utils/constants";
+import { getDashboardRoute, ROUTES } from "@/utils/constants";
 import { toastSuccess, toastError, AuthToasts } from "@/components/common/ToastProvider";
 
 export function LoginForm() {
+  /**
+   * Email/password and Google login form. On success it navigates to
+   * the role-specific dashboard. If OTP is required, it redirects to
+   * the email verification page.
+   */
   const { login, googleLogin, loading } = useAuth();
   const navigate = useNavigate();
 
@@ -26,20 +34,20 @@ export function LoginForm() {
     e.preventDefault();
     setError(null);
     try {
-      const result = await login({ email, password });
+      const result = await login({ email, password }).unwrap();
 
-      const requiresOtp = (result as { payload?: { requires_otp?: boolean } })
-        .payload?.requires_otp;
-      if (requiresOtp) {
+      if (result.requires_otp) {
         toastSuccess(AuthToasts.otpSent);
-        navigate(`/verify-email?email=${encodeURIComponent(email)}`, {
-          replace: true,
-        });
+        const purpose = result.purpose || "";
+        navigate(
+          `/verify-email?email=${encodeURIComponent(email)}${purpose ? `&purpose=${purpose}` : ""}`,
+          { replace: true }
+        );
         return;
       }
 
       toastSuccess("Login successful.");
-      const role = (result as { payload?: { role?: string } }).payload?.role;
+      const role = result.role;
       navigate(getDashboardRoute(role), { replace: true });
     } catch (err) {
       const msg = getErrorMessage(err);
@@ -49,13 +57,26 @@ export function LoginForm() {
   };
 
   // Exchange the Google credential for an EmpSphere JWT and go to the dashboard.
-  const handleGoogleCredential = (credential: string) => {
-    googleLogin(credential)
-      .then((result) => {
-        const role = (result as { payload?: { role?: string } }).payload?.role;
-        navigate(getDashboardRoute(role), { replace: true });
-      })
-      .catch((err) => setError(getErrorMessage(err)));
+  const handleGoogleCredential = async (credential: string) => {
+    try {
+      const result = await googleLogin(credential).unwrap();
+
+      if (result.requires_otp) {
+        toastSuccess(AuthToasts.otpSent);
+        const purpose = result.purpose || "";
+        navigate(
+          `/verify-email?email=${encodeURIComponent(result.email)}${purpose ? `&purpose=${purpose}` : ""}`,
+          { replace: true }
+        );
+        return;
+      }
+
+      toastSuccess("Login successful.");
+      const role = result.role;
+      navigate(getDashboardRoute(role), { replace: true });
+    } catch (err) {
+      setError(getErrorMessage(err));
+    }
   };
 
   return (
@@ -90,7 +111,7 @@ export function LoginForm() {
 
         <div className="flex items-center justify-between text-sm">
           <Link
-            to="/forgot-password"
+            to={ROUTES.FORGOT_PASSWORD}
             className="font-medium text-brand-600 hover:text-brand-700"
           >
             Forgot password?

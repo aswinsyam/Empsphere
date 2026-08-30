@@ -1,8 +1,9 @@
 /**
  * Sidebar.
- * Role-aware navigation sidebar shown inside the dashboard layout.
- * Placeholder links for future modules (Week 2+) are hidden or shown
- * based on the authenticated user's role.
+ *
+ * Role-aware navigation sidebar rendered inside `DashboardLayout`.
+ * Builds its navigation items from `getNavItems(user?.role)`, showing
+ * placeholder links marked "Soon" for modules not yet available.
  */
 
 import { NavLink } from "react-router-dom";
@@ -11,6 +12,11 @@ import { cn } from "@/utils/helpers";
 import { APP_NAME, getNavItems, PLACEHOLDER_ROUTE } from "@/utils/constants";
 
 export function Sidebar() {
+  /**
+   * Renders the left navigation rail. Builds its items from
+   * `getNavItems(user?.role)` so placeholder links are automatically
+   * hidden for roles that should not see them.
+   */
   const { user } = useAuth();
   const navItems = getNavItems(user?.role);
 

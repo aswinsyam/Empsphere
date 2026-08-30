@@ -1,30 +1,23 @@
 /**
  * VerifyEmailPage.
- * Lets a user enter an OTP sent to their email to verify their account,
- * with the option to resend the OTP.
+ *
+ * Reads `email` and optional `purpose` query parameters and passes them
+ * to `VerifyEmailForm`. Supports both initial verification and OTP-based
+ * flows such as first-login or password-setup verification.
  */
 
 import { useSearchParams } from "react-router-dom";
 import { VerifyEmailForm } from "@/components/auth/VerifyEmailForm";
+import { AuthPageShell } from "@/components/auth/AuthPageShell";
 
 export function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
   const email = searchParams.get("email") || "";
+  const purpose = searchParams.get("purpose") || undefined;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-      <div className="w-full max-w-md">
-        <div className="mb-6 text-center">
-          <h1 className="text-3xl font-bold text-brand-600">EmpSphere</h1>
-          <p className="mt-2 text-sm text-slate-500">
-            Verify your email address
-          </p>
-        </div>
-
-        <div className="card p-6">
-          <VerifyEmailForm email={email} />
-        </div>
-      </div>
-    </div>
+    <AuthPageShell title="Verify your email address">
+      <VerifyEmailForm email={email} purpose={purpose} />
+    </AuthPageShell>
   );
 }

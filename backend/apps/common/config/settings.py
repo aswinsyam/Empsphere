@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 
 # Load project .env so module-level reads of os.getenv() pick up values
 BASE_DIR = Path(__file__).resolve().parents[3]
-load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR / ".env", override=True)
 
 
 def _get_env(key: str, default: str = "") -> str:
@@ -46,6 +46,7 @@ class Settings:
     JWT_ALGORITHM: str
     ACCESS_TOKEN_EXP_MINUTES: int
     REFRESH_TOKEN_EXP_DAYS: int
+    PASSWORD_RESET_TOKEN_EXP_MINUTES: int
 
     EMAIL_HOST: str
     EMAIL_PORT: int
@@ -57,8 +58,10 @@ class Settings:
     GOOGLE_CLIENT_SECRET: str
     GOOGLE_REDIRECT_URI: str
 
-    RAZORPAY_KEY_ID: str
-    RAZORPAY_KEY_SECRET: str
+    CASHFREE_APP_ID: str
+    CASHFREE_SECRET_KEY: str
+    CASHFREE_ENVIRONMENT: str
+    CASHFREE_API_VERSION: str
 
     COMPANY_REGISTRATION_SECRET: str
 
@@ -73,10 +76,11 @@ settings = Settings(
     MONGO_URI=_get_env("MONGO_URI", "mongodb://localhost:27017"),
     DATABASE_NAME=_get_env("DATABASE_NAME", "empsphere_db"),
 
-    JWT_SECRET=os.getenv("JWT_SECRET", ""),
+    JWT_SECRET=os.getenv("JWT_SECRET") or os.getenv("SECRET_KEY", ""),
     JWT_ALGORITHM=_get_env("JWT_ALGORITHM", "HS256"),
     ACCESS_TOKEN_EXP_MINUTES=_get_int_env("ACCESS_TOKEN_EXP_MINUTES", 30),
     REFRESH_TOKEN_EXP_DAYS=_get_int_env("REFRESH_TOKEN_EXP_DAYS", 7),
+    PASSWORD_RESET_TOKEN_EXP_MINUTES=_get_int_env("PASSWORD_RESET_TOKEN_EXP_MINUTES", 10),
 
     EMAIL_HOST=_get_env("EMAIL_HOST", ""),
     EMAIL_PORT=_get_int_env("EMAIL_PORT", 587),
@@ -88,8 +92,10 @@ settings = Settings(
     GOOGLE_CLIENT_SECRET=_get_env("GOOGLE_CLIENT_SECRET", ""),
     GOOGLE_REDIRECT_URI=_get_env("GOOGLE_REDIRECT_URI", ""),
 
-    RAZORPAY_KEY_ID=_get_env("RAZORPAY_KEY_ID", ""),
-    RAZORPAY_KEY_SECRET=_get_env("RAZORPAY_KEY_SECRET", ""),
+    CASHFREE_APP_ID=_get_env("CASHFREE_APP_ID", ""),
+    CASHFREE_SECRET_KEY=_get_env("CASHFREE_SECRET_KEY", ""),
+    CASHFREE_ENVIRONMENT=_get_env("CASHFREE_ENVIRONMENT", "SANDBOX"),
+    CASHFREE_API_VERSION=_get_env("CASHFREE_API_VERSION", "2025-01-01"),
 
     COMPANY_REGISTRATION_SECRET=_get_env("COMPANY_REGISTRATION_SECRET", ""),
 

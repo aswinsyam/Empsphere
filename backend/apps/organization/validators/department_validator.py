@@ -4,7 +4,7 @@ Department validation logic.
 """
 from __future__ import annotations
 
-from apps.common.exceptions.custom_exception import ValidationException, NotFoundException
+from apps.common.exceptions.custom_exception import ValidationException
 
 
 class DepartmentValidator:
@@ -12,7 +12,7 @@ class DepartmentValidator:
 
     @staticmethod
     def validate_create(name, code):
-        """Validate department creation."""
+        """Validate required fields for department creation."""
         if not name or not name.strip():
             raise ValidationException("Department name is required.")
         if not code or not code.strip():
@@ -23,3 +23,6 @@ class DepartmentValidator:
         """Validate department update."""
         if not update_data:
             raise ValidationException("No data to update.")
+        name = update_data.get("name")
+        if name and not str(name).strip():
+            raise ValidationException("Department name cannot be empty.")

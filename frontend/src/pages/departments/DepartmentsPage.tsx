@@ -1,6 +1,10 @@
 /**
  * DepartmentsPage.
- * Department list + create/edit/delete UI.
+ *
+ * Lists active departments in a table and lets SUPER_ADMIN / ADMIN /
+ * HR_MANAGER create, edit, or soft-delete departments via the reusable
+ * `DepartmentFormModal` and a confirmation dialog (deletion only deactivates
+ * the record and preserves historical employee references).
  */
 
 import { useEffect, useState } from "react";
@@ -9,38 +13,53 @@ import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/common/Button";
 import { Input } from "@/components/common/Input";
-import { Modal } from "@/components/common/Modal";
 import { Loader } from "@/components/common/Loader";
+import { Modal } from "@/components/common/Modal";
+import { StatusBadge } from "@/components/common/StatusBadge";
+import { Pagination } from "@/components/common/Pagination";
 import { cn } from "@/utils/helpers";
 import { Department } from "@/types/department";
-
-// Roles allowed to manage departments fully.
-const MANAGE_ROLES = ["ADMIN", "SUPER_ADMIN"];
+import { DepartmentFormModal } from "@/components/departments/DepartmentFormModal";
+import { canManageEmployees } from "@/utils/constants";
+import { toastSuccess, toastApiError } from "@/components/common/ToastProvider";
 
 // Empty form shape.
 const EMPTY_FORM = {
   name: "",
   code: "",
   description: "",
+  is_active: true,
 };
 
 export function DepartmentsPage() {
-  const { departments, loading, error, list, create, update, remove } =
-    useDepartments();
+  const {
+    departments,
+    total_records,
+    total_pages,
+    page,
+    page_size,
+    loading,
+    error,
+    list,
+    create,
+    update,
+  } = useDepartments();
   const { user } = useAuth();
 
-  const canManage =
-    user?.role && MANAGE_ROLES.includes(user.role.toUpperCase());
+  const canManage = canManageEmployees(user?.role);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Department | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [confirmStatus, setConfirmStatus] = useState<Department | null>(null);
+  const [statusLoading, setStatusLoading] = useState(false);
 
   useEffect(() => {
-    list();
-  }, [list]);
+    list({ search: search || undefined, page: 1, page_size: 10, include_inactive: true });
+  }, [search, list]);
 
   const openCreate = () => {
     setEditing(null);
@@ -55,6 +74,7 @@ export function DepartmentsPage() {
       name: dept.name,
       code: dept.code,
       description: dept.description || "",
+      is_active: dept.is_active ?? true,
     });
     setFormError(null);
     setModalOpen(true);
@@ -70,17 +90,21 @@ export function DepartmentsPage() {
           name: form.name,
           code: form.code,
           description: form.description,
+          is_active: form.is_active,
         });
+        toastSuccess("Department updated successfully.");
       } else {
         await create({
           name: form.name,
           code: form.code,
           description: form.description,
         });
+        toastSuccess("Department created successfully.");
       }
       setModalOpen(false);
-      await list();
+      await list({ search: search || undefined, page: 1, page_size: 10, include_inactive: true });
     } catch (err) {
+      toastApiError(err, "Failed to save department");
       setFormError(
         err && typeof err === "object" && "message" in err
           ? String((err as { message: string }).message)
@@ -91,13 +115,19 @@ export function DepartmentsPage() {
     }
   };
 
-  const handleDelete = async (dept: Department) => {
-    if (!window.confirm(`Delete department "${dept.name}"?`)) return;
+  const confirmStatusToggle = async () => {
+    if (!confirmStatus) return;
+    const newStatus = !confirmStatus.is_active;
+    setStatusLoading(true);
     try {
-      await remove(dept.department_id);
-      await list();
-    } catch {
-      // handled by slice error state
+      await update(confirmStatus.department_id, { is_active: newStatus });
+      toastSuccess(newStatus ? "Department activated successfully." : "Department deactivated successfully.");
+      setConfirmStatus(null);
+      await list({ search: search || undefined, page: 1, page_size: 10, include_inactive: true });
+    } catch (err) {
+      toastApiError(err, newStatus ? "Failed to activate department" : "Failed to deactivate department");
+    } finally {
+      setStatusLoading(false);
     }
   };
 
@@ -108,7 +138,7 @@ export function DepartmentsPage() {
         subtitle="Manage the departments in your organization."
         actions={
           canManage ? (
-            <Button onClick={openCreate}>New department</Button>
+            <Button onClick={openCreate}>Create Department</Button>
           ) : undefined
         }
       />
@@ -117,11 +147,22 @@ export function DepartmentsPage() {
         <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700">{error}</div>
       ) : null}
 
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+        <Input
+          label="Search"
+          name="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by name or code..."
+          className="sm:max-w-xs"
+        />
+      </div>
+
       {loading && departments.length === 0 ? (
         <Loader />
       ) : departments.length === 0 ? (
         <div className="card p-8 text-center text-sm text-slate-500">
-          No departments yet. Create your first department.
+          No departments found.
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
@@ -131,6 +172,7 @@ export function DepartmentsPage() {
                 <th className="px-4 py-3 text-left font-medium text-slate-500">Name</th>
                 <th className="px-4 py-3 text-left font-medium text-slate-500">Code</th>
                 <th className="px-4 py-3 text-left font-medium text-slate-500">Description</th>
+                <th className="px-4 py-3 text-left font-medium text-slate-500">Employees</th>
                 <th className="px-4 py-3 text-left font-medium text-slate-500">Status</th>
                 {canManage ? (
                   <th className="px-4 py-3 text-right font-medium text-slate-500">Actions</th>
@@ -147,17 +189,9 @@ export function DepartmentsPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-slate-600">{dept.description || "—"}</td>
+                  <td className="px-4 py-3 text-slate-600">{dept.employee_count ?? 0}</td>
                   <td className="px-4 py-3">
-                    <span
-                      className={cn(
-                        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
-                        dept.is_active
-                          ? "bg-green-100 text-green-700"
-                          : "bg-slate-100 text-slate-600"
-                      )}
-                    >
-                      {dept.is_active ? "Active" : "Inactive"}
-                    </span>
+                    <StatusBadge status={dept.is_active} />
                   </td>
                   {canManage ? (
                     <td className="px-4 py-3">
@@ -169,10 +203,15 @@ export function DepartmentsPage() {
                           Edit
                         </button>
                         <button
-                          onClick={() => handleDelete(dept)}
-                          className="rounded border border-red-200 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                          onClick={() => setConfirmStatus(dept)}
+                          className={cn(
+                            "rounded border px-2 py-1 text-xs font-medium",
+                            dept.is_active
+                              ? "border-amber-200 text-amber-700 hover:bg-amber-50"
+                              : "border-green-200 text-green-600 hover:bg-green-50"
+                          )}
                         >
-                          Delete
+                          {dept.is_active ? "Deactivate" : "Activate"}
                         </button>
                       </div>
                     </td>
@@ -184,53 +223,51 @@ export function DepartmentsPage() {
         </div>
       )}
 
-      <Modal
+      {total_pages > 1 && (
+        <Pagination
+          page={page}
+          totalPages={total_pages}
+          totalRecords={total_records}
+          onPageChange={(nextPage) =>
+            list({
+              search: search || undefined,
+              page: nextPage,
+              page_size,
+              include_inactive: true,
+            })
+          }
+        />
+      )}
+
+      <DepartmentFormModal
         open={modalOpen}
-        title={editing ? "Edit department" : "New department"}
+        editing={editing}
+        form={form}
+        submitting={submitting}
+        formError={formError}
         onClose={() => setModalOpen(false)}
+        onSubmit={handleSubmit}
+        onFormChange={(field, value) => setForm({ ...form, [field]: value })}
+      />
+
+      <Modal
+        open={confirmStatus !== null}
+        title={confirmStatus?.is_active ? "Deactivate department" : "Activate department"}
+        onClose={() => setConfirmStatus(null)}
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {formError ? (
-            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{formError}</div>
-          ) : null}
-
-          <Input
-            label="Name"
-            name="name"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            required
-          />
-
-          <Input
-            label="Code"
-            name="code"
-            value={form.code}
-            onChange={(e) => setForm({ ...form, code: e.target.value })}
-            hint="Short unique code, e.g. ENG"
-            required
-          />
-
-          <Input
-            label="Description (optional)"
-            name="description"
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-          />
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setModalOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" loading={submitting}>
-              {editing ? "Save changes" : "Create department"}
-            </Button>
-          </div>
-        </form>
+        <p className="text-sm text-slate-600">
+          {confirmStatus?.is_active
+            ? `Deactivate department "${confirmStatus?.name}"? Existing data will be preserved.`
+            : `Activate department "${confirmStatus?.name}"?`}
+        </p>
+        <div className="mt-4 flex justify-end gap-2">
+          <Button variant="ghost" onClick={() => setConfirmStatus(null)}>
+            Cancel
+          </Button>
+          <Button variant={confirmStatus?.is_active ? "danger" : "primary"} loading={statusLoading} onClick={confirmStatusToggle}>
+            {confirmStatus?.is_active ? "Deactivate" : "Activate"}
+          </Button>
+        </div>
       </Modal>
     </div>
   );

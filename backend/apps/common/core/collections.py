@@ -3,6 +3,8 @@ Centralized MongoDB collection names.
 
 Every repository should use these constants instead of
 hardcoding collection names.
+
+Note: Employees are stored in the USERS collection.
 """
 
 
@@ -16,20 +18,13 @@ class Collections:
     ROLES = "roles"
     PERMISSIONS = "permissions"
     TOKENS = "tokens"
-    SEQUENCES = "sequences"
     OTPS = "otps"
 
     # ==========================
     # Organization
     # ==========================
-    ORGANIZATIONS = "organizations"
     DEPARTMENTS = "departments"
     DESIGNATIONS = "designations"
-
-    # ==========================
-    # Employee
-    # ==========================
-    EMPLOYEES = "employees"
 
     # ==========================
     # Attendance & Leave
@@ -38,23 +33,12 @@ class Collections:
     LEAVES = "leaves"
 
     # ==========================
-    # Payroll
+    # Payment
     # ==========================
-    PAYROLLS = "payrolls"
-    PAYSLIPS = "payslips"
-
-    # ==========================
-    # Notifications
-    # ==========================
-    NOTIFICATIONS = "notifications"
-
-    # ==========================
-    # Reports
-    # ==========================
-    REPORTS = "reports"
+    PAYMENTS = "payments"
+    AMENITIES = "amenities"
 
     # ==========================
     # Logs
     # ==========================
-    AUDIT_LOGS = "audit_logs"
     ACTIVITY_LOGS = "activity_logs"

@@ -19,11 +19,15 @@ import {
 
 export function useDepartments() {
   const dispatch = useDispatch<AppDispatch>();
-  const { departments, loading, error } = useSelector(
+  const { departments, total_records, total_pages, page, page_size, loading, error } = useSelector(
     (state: RootState) => state.department
   );
 
-  const list = useCallback(() => dispatch(fetchDepartments()), [dispatch]);
+  const list = useCallback(
+    (params?: { search?: string; page?: number; page_size?: number; include_inactive?: boolean }) =>
+      dispatch(fetchDepartments(params || {})),
+    [dispatch]
+  );
 
   const create = useCallback(
     (payload: CreateDepartmentPayload) => dispatch(createDepartment(payload)),
@@ -41,5 +45,5 @@ export function useDepartments() {
     [dispatch]
   );
 
-  return { departments, loading, error, list, create, update, remove };
+  return { departments, total_records, total_pages, page, page_size, loading, error, list, create, update, remove };
 }

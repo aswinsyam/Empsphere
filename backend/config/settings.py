@@ -19,7 +19,7 @@ import os
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR / ".env", override=True)
 
 # Ensure the logs directory exists before logging configures the file handler.
 LOG_DIR = BASE_DIR / "logs"
@@ -53,8 +53,14 @@ INSTALLED_APPS = [
 
     "apps.authentication",
     "apps.organization",
+    "apps.employee",
+    "apps.attendance",
+    "apps.leave",
     "apps.activity_logs",
+    "apps.statistics",
     "apps.common",
+    "apps.reports",
+    "apps.payment",
 ]
 
 MIDDLEWARE = [
@@ -139,40 +145,45 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CORS_ALLOW_ALL_ORIGINS = True
-
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
+    os.getenv("FRONTEND_URL", "http://localhost:3000"),
 ]
-
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
-
-STATIC_URL = "static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
 
 
 # -------------------------------------------------------------------
 # Email Configuration
+#
+# Real emails (OTP delivery for email verification, first login and
+# forgot password) are sent through SMTP. All credentials come from the
+# environment (.env) and must never be hardcoded. For Gmail, use
+# EMAIL_HOST=smtp.gmail.com, EMAIL_PORT=587, EMAIL_USE_TLS=True and a
+# Gmail App Password in EMAIL_HOST_PASSWORD.
 # -------------------------------------------------------------------
 
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_BACKEND = os.getenv(
+    "EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend"
+)
 EMAIL_HOST = os.getenv("EMAIL_HOST", "localhost")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", 25))
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "False") == "True"
 EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "False") == "True"
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
-DEFAULT_FROM_EMAIL = os.getenv("EMAIL_HOST_USER") or "webmaster@localhost"
+EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", 30))
+DEFAULT_FROM_EMAIL = (
+    os.getenv("DEFAULT_FROM_EMAIL")
+    or os.getenv("EMAIL_HOST_USER")
+    or "webmaster@localhost"
+)
 
 
 # -------------------------------------------------------------------

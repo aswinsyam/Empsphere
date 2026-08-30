@@ -7,13 +7,20 @@ import { http } from "./api";
 import {
   CreateDepartmentPayload,
   Department,
+  DepartmentListResponse,
   UpdateDepartmentPayload,
 } from "@/types/department";
 
+/** Client for organization department endpoints. */
 export const departmentService = {
-  /** List all departments. */
-  async list(): Promise<Department[]> {
-    return http.get<Department[]>("/organization/departments/");
+  /** List departments with optional search and pagination. */
+  async list(params?: {
+    search?: string;
+    page?: number;
+    page_size?: number;
+    include_inactive?: boolean;
+  }): Promise<DepartmentListResponse> {
+    return http.get<DepartmentListResponse>("/organization/departments/", params);
   },
 
   /** Get a single department by id. */

@@ -1,8 +1,11 @@
 /**
  * ToastProvider.
- * Centralized toast notification provider using react-toastify.
- * 
- * This should be mounted at the root of the application (e.g., in App.tsx or main layout).
+ *
+ * Centralized toast notification provider built on `react-toastify`.
+ * Should be mounted at the application root (e.g. `App.tsx`). Exposes
+ * helper functions (`toastSuccess`, `toastError`) and
+ * centralized constants (`AuthToasts`) for consistent UX across auth
+ * and business flows.
  */
 
 import React from "react";
@@ -38,8 +41,9 @@ export const AuthToasts = {
   invalidCredentials: "Invalid email or password.",
   otpSent: "OTP sent to your email.",
   otpVerified: "Email verified successfully.",
+  otpVerifiedSuccess: "OTP verified successfully.",
   passwordChanged: "Password changed successfully.",
-  passwordReset: "Password reset link sent.",
+  passwordResetSuccess: "Password reset successful.",
   googleLoginSuccess: "Google login successful.",
   logoutSuccess: "Logged out successfully.",
   profileUpdated: "Profile updated successfully.",
@@ -53,17 +57,10 @@ export const AuthToasts = {
  */
 export const toastSuccess = (message: string) => toast.success(message);
 export const toastError = (message: string) => toast.error(message);
-export const toastInfo = (message: string) => toast.info(message);
 
-/**
- * Show an API error message as a toast.
- * 
- * @param error - The error object from an API call
- * @returns User-friendly error message
- */
-export const showApiError = (error: any): string => {
+const showApiError = (error: any): string => {
   if (!error) return AuthToasts.apiError;
-  
+
   if (error.response) {
     const data = error.response.data;
     if (typeof data === "string") return data;
@@ -81,11 +78,11 @@ export const showApiError = (error: any): string => {
       }
     }
   }
-  
+
   if (error.message) return String(error.message);
   if (error.error) return String(error.error);
   if (error.detail) return String(error.detail);
-  
+
   return AuthToasts.apiError;
 };
 
@@ -95,29 +92,4 @@ export const showApiError = (error: any): string => {
 export const toastApiError = (error: any, prefix?: string) => {
   const message = showApiError(error);
   toast.error(prefix ? `${prefix}: ${message}` : message);
-};
-
-/**
- * Centralized API call wrapper with toast error handling.
- * 
- * @param promise - The API promise/call
- * @param successMessage - Optional success toast message
- * @param errorMessagePrefix - Optional prefix for error messages
- * @returns The API response data
- */
-export const withToast = async (
-  promise: Promise<any>,
-  successMessage?: string,
-  errorMessagePrefix?: string
-) => {
-  try {
-    const data = await promise;
-    if (successMessage) {
-      toastSuccess(successMessage);
-    }
-    return data;
-  } catch (error: any) {
-    toastApiError(error, errorMessagePrefix);
-    throw error;
-  }
 };

@@ -1,6 +1,8 @@
 /**
  * Loader.
- * A simple centered spinner used while content is loading.
+ *
+ * Simple centered spinner used while data is loading. Accepts an
+ * optional text label shown below the spinner.
  */
 
 interface LoaderProps {
@@ -8,6 +10,10 @@ interface LoaderProps {
 }
 
 export function Loader({ text = "Loading..." }: LoaderProps) {
+  /**
+   * Simple centered spinner used while data is loading. Accepts an
+   * optional text label shown below the spinner.
+   */
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-8">
       <div

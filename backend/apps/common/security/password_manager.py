@@ -32,5 +32,18 @@ class PasswordManager:
 
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
-        """Verify a plaintext password against a hash."""
-        return pwd_context.verify(plain_password, hashed_password)
+        """Verify a plaintext password against a stored bcrypt hash.
+
+        A stored value that is not a recognizable bcrypt hash (e.g. a legacy
+        plaintext value or a hash produced by a different algorithm) can
+        never validate a password. Returning False here converts what would
+        otherwise surface as an unhandled ``UnknownHashError`` (HTTP 500)
+        into a clean "invalid credentials" result (HTTP 401), instead of
+        leaking an internal exception.
+        """
+        if not hashed_password:
+            return False
+        try:
+            return pwd_context.verify(plain_password, hashed_password)
+        except (ValueError, TypeError):
+            return False

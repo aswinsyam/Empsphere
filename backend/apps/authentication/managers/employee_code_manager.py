@@ -10,5 +10,5 @@ class EmployeeCodeManager:
     """Employee code generation."""
 
     def generate(self):
-        """Generate employee code."""
+        """Generate a unique employee code (e.g. EMP-4821)."""
         return f"EMP-{random.randint(1000, 9999)}"

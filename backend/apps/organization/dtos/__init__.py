@@ -1,1 +1,1 @@
-# organization dtos package
+"""Organization DTOs package."""
