@@ -74,8 +74,3 @@ export interface PaymentOrderResponse {
   amount: number;
   currency: string;
 }
-
-/** Amenity list response. */
-export interface AmenityListResponse {
-  amenities: Amenity[];
-}

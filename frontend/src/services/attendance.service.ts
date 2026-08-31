@@ -24,11 +24,6 @@ export const attendanceService = {
     return http.get<AttendanceListResponse>("/attendance/", params);
   },
 
-  /** Get a single attendance record. */
-  async getById(id: string): Promise<AttendanceRecord> {
-    return http.get<AttendanceRecord>(`/attendance/${id}/`);
-  },
-
   /** Mark attendance for an employee. */
   async mark(payload: {
     employee_id?: string;

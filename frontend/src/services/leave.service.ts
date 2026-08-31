@@ -21,11 +21,6 @@ export const leaveService = {
     return http.get<LeaveListResponse>("/leaves/", params);
   },
 
-  /** Get a single leave by id. */
-  async getById(id: string): Promise<LeaveRecord> {
-    return http.get<LeaveRecord>(`/leaves/${id}/`);
-  },
-
   /** Apply for leave. */
   async apply(payload: {
     employee_id: string;

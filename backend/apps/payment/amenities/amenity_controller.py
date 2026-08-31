@@ -19,7 +19,12 @@ from apps.payment.amenities.amenity_service import AmenityService
 
 
 class AmenityController(APIView, BaseController):
-    """Amenity endpoints for admin management."""
+    """Amenity endpoints for admin management.
+
+    Amenities define the office items/services employees can pay for.
+    Only SUPER_ADMIN and ADMIN can create/update/delete amenities.
+    All authenticated roles can list and view active amenities.
+    """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

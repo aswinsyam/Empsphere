@@ -87,7 +87,12 @@ class EmployeeService(BaseService):
         }
 
     def update_employee(self, employee_id, dto, actor_role=None):
-        """Update an employee."""
+        """Update an employee.
+
+        RBAC: the actor must be able to manage the target employee's role
+        (e.g., an HR_MANAGER cannot update an ADMIN). Enforced via
+        RolePermission.can_manage_user().
+        """
         existing = self.repository.get_by_id(employee_id)
         if not existing:
             raise NotFoundException("Employee not found.")

@@ -70,12 +70,7 @@ export const deleteDepartment = createAsyncThunk<string, string>(
 const departmentSlice = createSlice({
   name: "department",
   initialState,
-  reducers: {
-    clearDepartments(state) {
-      state.departments = [];
-      state.error = null;
-    },
-  },
+  reducers: {},
   extraReducers: (builder) => {
     // fetch all
     builder.addCase(fetchDepartments.pending, (state) => {
@@ -141,7 +136,5 @@ const departmentSlice = createSlice({
     });
   },
 });
-
-export const { clearDepartments } = departmentSlice.actions;
 
 export default departmentSlice.reducer;

@@ -35,16 +35,6 @@ export const authService = {
     return http.post<RegisterResult>("/auth/register/", payload);
   },
 
-/** Refresh the access token (backend rotates and returns a new refresh token). */
-  async refreshToken(
-    refreshToken: string
-  ): Promise<{ access_token: string; refresh_token: string }> {
-    return http.post<{ access_token: string; refresh_token: string }>(
-      "/auth/refresh-token/",
-      { refresh_token: refreshToken }
-    );
-  },
-
   /** Log in with a Google ID token. */
   async googleLogin(idToken: string): Promise<LoginResult> {
     return http.post<LoginResult>("/auth/google-login/", {

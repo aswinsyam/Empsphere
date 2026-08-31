@@ -18,11 +18,6 @@ export const designationService = {
     return http.get<DesignationListResponse>("/organization/designations/", params);
   },
 
-  /** Get a single designation by id. */
-  async getById(id: string): Promise<Designation> {
-    return http.get<Designation>(`/organization/designations/${id}/`);
-  },
-
   /** Create a new designation. */
   async create(payload: {
     name: string;

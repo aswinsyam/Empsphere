@@ -37,14 +37,12 @@ export const ROUTES = {
   LOGIN: "/login",
   REGISTER: "/register",
   VERIFY_EMAIL: "/verify-email",
-  VERIFY_OTP: "/verify-otp",
   DASHBOARD: "/dashboard",
   CHANGE_PASSWORD: "/change-password",
   SET_PASSWORD: "/set-password",
   FORGOT_PASSWORD: "/forgot-password",
   RESET_PASSWORD: "/reset-password",
   PROFILE: "/profile",
-  UNAUTHORIZED: "/unauthorized",
   EMPLOYEES: "/employees",
   DEPARTMENTS: "/departments",
   ATTENDANCE: "/attendance",
@@ -82,9 +80,6 @@ export function getDashboardRoute(role?: string | null): string {
 
 /** App name. */
 export const APP_NAME = "EmpSphere";
-
-/** Default token expiry check (ms). */
-export const TOKEN_EXPIRY_BUFFER_MS = 30 * 1000; // 30 seconds
 
 /** Placeholder route used for future modules (Week 2+). */
 export const PLACEHOLDER_ROUTE = "#";

@@ -20,7 +20,13 @@ class PaymentValidator:
 
     @staticmethod
     def validate_status_transition(current_status: str, new_status: str):
-        """Validate payment status transition."""
+        """Validate payment status transition.
+
+        Business rules:
+        - PAID payments are final and cannot be changed.
+        - CANCELLED payments cannot be updated.
+        - FAILED payments can only be retried (set back to PENDING).
+        """
         if new_status not in PaymentValidator.VALID_STATUSES:
             raise ValidationException(
                 f"Invalid status. Allowed: {', '.join(PaymentValidator.VALID_STATUSES)}"

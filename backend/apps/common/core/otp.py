@@ -15,7 +15,6 @@ class OTPPurpose:
     """Supported OTP purposes."""
 
     EMAIL_VERIFICATION = "email_verification"
-    LOGIN = "login"
     FIRST_LOGIN = "first_login"
     PASSWORD_SETUP = "password_setup"
     FORGOT_PASSWORD = "forgot_password"
@@ -23,7 +22,6 @@ class OTPPurpose:
     #: Every purpose accepted by the OTP endpoints.
     ALL = (
         EMAIL_VERIFICATION,
-        LOGIN,
         FIRST_LOGIN,
         PASSWORD_SETUP,
         FORGOT_PASSWORD,

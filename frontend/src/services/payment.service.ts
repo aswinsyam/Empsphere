@@ -32,11 +32,6 @@ export const paymentService = {
     return response;
   },
 
-  async get(paymentId: string): Promise<Payment> {
-    const response = await http.get<Payment>(`/payment/${paymentId}/`);
-    return response;
-  },
-
   async verify(
     paymentId: string,
     payload: VerifyPaymentPayload
