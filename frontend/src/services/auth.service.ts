@@ -5,15 +5,17 @@
 
 import { http } from "./api";
 import {
-  LoginOTPResult,
+  ForgotPasswordPayload,
   LoginPayload,
   LoginResult,
   RegisterResult,
+  ResetPasswordPayload,
   SendOTPPayload,
   SetPasswordPayload,
   VerifyOTPPayload,
 } from "@/types/auth";
 
+/** Client for authentication-related API endpoints. */
 export const authService = {
   /** Log in and get tokens. */
   async login(payload: LoginPayload): Promise<LoginResult> {
@@ -33,25 +35,6 @@ export const authService = {
     return http.post<RegisterResult>("/auth/register/", payload);
   },
 
-  /** Login with OTP (passwordless). */
-  async loginWithOtp(email: string, otp: string): Promise<LoginOTPResult> {
-    return http.post<LoginOTPResult>("/auth/verify-otp/", {
-      email,
-      otp,
-      purpose: "login",
-    });
-  },
-
-/** Refresh the access token (backend rotates and returns a new refresh token). */
-  async refreshToken(
-    refreshToken: string
-  ): Promise<{ access_token: string; refresh_token: string }> {
-    return http.post<{ access_token: string; refresh_token: string }>(
-      "/auth/refresh-token/",
-      { refresh_token: refreshToken }
-    );
-  },
-
   /** Log in with a Google ID token. */
   async googleLogin(idToken: string): Promise<LoginResult> {
     return http.post<LoginResult>("/auth/google-login/", {
@@ -64,31 +47,31 @@ export const authService = {
     await http.post<null>("/auth/logout/", { refresh_token: refreshToken });
   },
 
-  /** Request a password reset link. */
-  async forgotPassword(email: string): Promise<null> {
-    return http.post<null>("/auth/forgot-password/", { email });
-  },
-
-/** Reset the password with a token. */
-  async resetPassword(token: string, newPassword: string): Promise<null> {
-    return http.post<null>("/auth/reset-password/", {
-      token,
-      new_password: newPassword,
-    });
-  },
-
-  /** Send an OTP to an email for verification or password reset. */
+  /** Send an OTP to an email for verification or password setup. */
   async sendOtp(payload: SendOTPPayload): Promise<null> {
     return http.post<null>("/auth/send-otp/", payload);
   },
 
   /** Verify an OTP code. */
-  async verifyOtp(payload: VerifyOTPPayload): Promise<null | LoginOTPResult> {
-    return http.post<null | LoginOTPResult>("/auth/verify-otp/", payload);
+  async verifyOtp(payload: VerifyOTPPayload): Promise<any> {
+    return http.post<any>("/auth/verify-otp/", payload);
   },
 
   /** Set a local password for a Google-authenticated user (requires OTP). */
   async setPassword(payload: SetPasswordPayload): Promise<null> {
     return http.post<null>("/auth/set-password/", payload);
+  },
+
+  /** Request a password reset OTP (`purpose: "forgot_password"`). */
+  async forgotPassword(payload: ForgotPasswordPayload): Promise<null> {
+    return http.post<null>("/auth/forgot-password/", payload);
+  },
+
+  /**
+   * Reset the password using the single-use reset token returned by
+   * `verifyOtp({ purpose: "forgot_password" })`.
+   */
+  async resetPassword(payload: ResetPasswordPayload): Promise<null> {
+    return http.post<null>("/auth/reset-password/", payload);
   },
 };

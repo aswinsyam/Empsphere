@@ -11,7 +11,6 @@ import {
   fetchMe,
   googleLogin,
   login,
-  login as loginAction,
   logoutUser,
   register,
 } from "@/store/slices/authSlice";
@@ -28,7 +27,7 @@ export function useAuth() {
   const dashboardRoute = getDashboardRoute(user?.role);
 
   const handleLogin = useCallback(
-    (payload: LoginPayload) => dispatch(loginAction(payload)),
+    (payload: LoginPayload) => dispatch(login(payload)),
     [dispatch]
   );
 
@@ -63,6 +62,3 @@ export function useAuth() {
     googleLogin: handleGoogleLogin,
   };
 }
-
-// Re-export login for potential direct imports.
-export { login };

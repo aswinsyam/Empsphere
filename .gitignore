@@ -1,27 +1,51 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors / IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
 # Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-*.env
-.env
+.venv/
+venv/
+backend/venv/
+backend/logs/
 
 # Django
 db.sqlite3
 media/
-
-# Virtual environments
-backend/venv/
-venv/
+staticfiles/
 
 # Node
 node_modules/
-
-# VSCode
-.vscode/
-
-# macOS
-.DS_Store
+dist/
+build/
+frontend/dist/
+frontend/build/
+*.tsbuildinfo
+.vite/
 
 # Logs
-backend/logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files (NEVER commit secrets)
+.env
+.env.*
+
+# Local caches
+.cache/
+.parcel-cache/
+.eslintcache
+
+# Tooling (local agent / IDE configs)
+.kilo/

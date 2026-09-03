@@ -1,11 +1,18 @@
 /**
  * UnauthorizedPage.
- * 403 error screen shown when a user lacks permission.
+ *
+ * 403 error screen. Shown when an authenticated user lacks the required
+ * role for a protected route. Provides a link back to the dashboard.
  */
 
 import { Link } from "react-router-dom";
 
 export function UnauthorizedPage() {
+  /**
+   * Renders a 403 error page when an authenticated user lacks the
+   * required role for a protected route. Includes a link back to the
+   * dashboard.
+   */
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 text-center">
       <p className="text-6xl font-bold text-brand-600">403</p>

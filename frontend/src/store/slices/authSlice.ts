@@ -1,4 +1,4 @@
-/**
+ /**
  * Auth slice.
  * Manages the current user's authentication state with Redux Toolkit.
  */
@@ -12,6 +12,7 @@ import {
   LoginResult,
   RegisterPayload,
   User,
+  VerifyOTPPayload,
 } from "@/types/auth";
 
 interface AuthState {
@@ -21,16 +22,42 @@ interface AuthState {
   error: string | null;
 }
 
+/** Convert a backend user response into the frontend User shape. */
+function normalizeUser(result: unknown): User {
+  const record = result as any;
+  if (record._id) {
+    return record;
+  }
+  const { user_id, ...rest } = record;
+  return { ...rest, _id: user_id || "" };
+}
+
 /** Convert a login/register result into a partial User for the store. */
 function userFromLogin(result: {
-  user_id: string;
+  user_id?: string;
+  employee_code?: string;
+  first_name?: string;
+  last_name?: string;
+  full_name?: string;
   email: string;
-  role: string;
+  phone?: string;
+  role?: string;
+  profile_image_id?: string;
+  is_email_verified?: boolean;
+  login_provider?: string;
 }): User {
   return {
-    _id: result.user_id,
+    _id: result.user_id || "",
+    employee_code: result.employee_code,
+    first_name: result.first_name,
+    last_name: result.last_name,
+    full_name: result.full_name,
     email: result.email,
-    role: result.role,
+    phone: result.phone,
+    role: result.role || "",
+    profile_image_id: result.profile_image_id,
+    is_email_verified: result.is_email_verified,
+    login_provider: result.login_provider,
   };
 }
 
@@ -46,7 +73,14 @@ export const login = createAsyncThunk<LoginResult, LoginPayload>(
   "auth/login",
   async (payload) => {
     const result = await authService.login(payload);
-    TokenUtil.setTokens(result.access_token, result.refresh_token);
+
+    // Unverified users get a `requires_otp` response with no tokens.
+    // We must NOT store tokens for them.
+    const requiresOtp = (result as { requires_otp?: boolean }).requires_otp;
+    if (!requiresOtp) {
+      // When requires_otp is false, the backend always returns both tokens.
+      TokenUtil.setTokens(result.access_token!, result.refresh_token!);
+    }
     return result;
   }
 );
@@ -87,8 +121,23 @@ export const googleLogin = createAsyncThunk<LoginResult, string>(
   "auth/googleLogin",
   async (idToken) => {
     const result = await authService.googleLogin(idToken);
-    TokenUtil.setTokens(result.access_token, result.refresh_token);
+    const requiresOtp = (result as { requires_otp?: boolean }).requires_otp;
+    if (!requiresOtp) {
+      TokenUtil.setTokens(result.access_token!, result.refresh_token!);
+    }
     return result;
+  }
+);
+
+/** Complete first-login OTP verification and persist tokens. */
+export const completeFirstLogin = createAsyncThunk<LoginResult, VerifyOTPPayload>(
+  "auth/completeFirstLogin",
+  async (payload) => {
+    const result = await authService.verifyOtp(payload);
+    if (result && result.access_token) {
+      TokenUtil.setTokens(result.access_token, result.refresh_token);
+    }
+    return result as LoginResult;
   }
 );
 
@@ -119,7 +168,14 @@ const authSlice = createSlice({
     builder.addCase(login.fulfilled, (state, action) => {
       state.loading = false;
       state.error = null;
-      state.user = userFromLogin(action.payload);
+
+      // When the backend responds with `requires_otp`, the user's email is
+      // not yet verified and NO tokens/user were issued. Do not set a user.
+      const requiresOtp = (action.payload as { requires_otp?: boolean })
+        .requires_otp;
+      if (!requiresOtp) {
+        state.user = userFromLogin(action.payload);
+      }
     });
     builder.addCase(login.rejected, (state, action) => {
       state.loading = false;
@@ -134,11 +190,31 @@ const authSlice = createSlice({
     builder.addCase(googleLogin.fulfilled, (state, action) => {
       state.loading = false;
       state.error = null;
-      state.user = userFromLogin(action.payload);
+      const requiresOtp = (action.payload as { requires_otp?: boolean }).requires_otp;
+      if (!requiresOtp) {
+        state.user = userFromLogin(action.payload);
+      }
     });
     builder.addCase(googleLogin.rejected, (state, action) => {
       state.loading = false;
       state.error = action.error.message || "Google login failed.";
+    });
+
+    // complete first login
+    builder.addCase(completeFirstLogin.pending, (state) => {
+      state.loading = true;
+      state.error = null;
+    });
+    builder.addCase(completeFirstLogin.fulfilled, (state, action) => {
+      state.loading = false;
+      state.error = null;
+      if (action.payload.user_id) {
+        state.user = userFromLogin(action.payload);
+      }
+    });
+    builder.addCase(completeFirstLogin.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.error.message || "First login verification failed.";
     });
 
     // register
@@ -163,7 +239,7 @@ const authSlice = createSlice({
     builder.addCase(fetchMe.fulfilled, (state, action) => {
       state.loading = false;
       state.initializing = false;
-      state.user = action.payload;
+      state.user = normalizeUser(action.payload);
     });
     builder.addCase(fetchMe.rejected, (state, action) => {
       state.loading = false;
@@ -186,5 +262,7 @@ const authSlice = createSlice({
 });
 
 export const { clearAuth, setUser, setInitialized } = authSlice.actions;
+
+export { normalizeUser };
 
 export default authSlice.reducer;

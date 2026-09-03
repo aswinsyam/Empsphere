@@ -1,15 +1,17 @@
 /**
  * Navbar.
- * Top navigation bar with user profile image, a dropdown menu with
- * account links (View Profile, Change Password, Logout), and a mobile
- * app name. The dropdown is positioned within the viewport and given a
- * high z-index so it is never clipped by the header.
+ *
+ * Top header bar for the dashboard layout. Shows the app name on mobile,
+ * the current user's identity, and a dropdown menu with profile links,
+ * password actions (change or set password depending on login provider),
+ * and a logout button. Closes automatically when clicking outside.
  */
 
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar } from "@/components/common/Avatar";
+import { getProfileImageUrl } from "@/utils/helpers";
 import {
   ROUTES,
   getChangePasswordNavItem,
@@ -17,6 +19,11 @@ import {
 } from "@/utils/constants";
 
 export function Navbar() {
+  /**
+   * Top header bar for the dashboard. Shows the app name on mobile,
+   * the current user's identity, and a dropdown with profile links,
+   * password actions, and logout. Closes when clicking outside.
+   */
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -70,7 +77,7 @@ export function Navbar() {
             <Avatar
               name={user?.full_name}
               email={user?.email}
-              src={user?.profile_image}
+              src={getProfileImageUrl(user?._id, user?.profile_image_id)}
               size="md"
             />
           </button>

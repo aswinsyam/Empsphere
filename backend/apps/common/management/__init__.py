@@ -1,1 +1,1 @@
-# Management package for common app.
+"""Management package for common app."""

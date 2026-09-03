@@ -1,6 +1,9 @@
 /**
  * ChangePasswordForm.
- * Allows an authenticated user to update their password.
+ *
+ * Allows an authenticated user to update their password. Requires the
+ * current password plus a new password that meets the application's
+ * strength requirements. Navigates to the dashboard on success.
  */
 
 import { useState } from "react";
@@ -8,9 +11,15 @@ import { useNavigate } from "react-router-dom";
 import { userService } from "@/services/user.service";
 import { Button } from "@/components/common/Button";
 import { Input } from "@/components/common/Input";
-import { getErrorMessage } from "@/utils/helpers";
+import { getErrorMessage, getPasswordRequirements } from "@/utils/helpers";
+import { toastSuccess, toastError, AuthToasts } from "@/components/common/ToastProvider";
 
 export function ChangePasswordForm() {
+  /**
+   * Allows an authenticated user to update their password. Requires
+   * the current password and a new password that meets the application's
+   * strength requirements. Navigates to the dashboard on success.
+   */
   const navigate = useNavigate();
 
   const [currentPassword, setCurrentPassword] = useState("");
@@ -20,26 +29,44 @@ export function ChangePasswordForm() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  const passwordRequirements = getPasswordRequirements(newPassword);
+  const isPasswordValid = passwordRequirements.every((req) => req.met);
+
+  const confirmTouched = confirmPassword.length > 0;
+  const passwordsMatch = newPassword === confirmPassword;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
 
-    if (newPassword !== confirmPassword) {
-      setError("New password and confirmation do not match.");
+    if (!isPasswordValid) {
+      const msg = "Please meet all password requirements before changing your password.";
+      setError(msg);
+      toastError(msg);
+      return;
+    }
+
+    if (!passwordsMatch) {
+      const msg = "New password and confirmation do not match.";
+      setError(msg);
+      toastError(msg);
       return;
     }
 
     setLoading(true);
     try {
       await userService.changePassword(currentPassword, newPassword);
+      toastSuccess(AuthToasts.passwordChanged);
       setSuccess("Password changed successfully.");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
       setTimeout(() => navigate("/dashboard"), 1500);
     } catch (err) {
-      setError(getErrorMessage(err));
+      const msg = getErrorMessage(err);
+      setError(msg);
+      toastError(msg);
     } finally {
       setLoading(false);
     }
@@ -79,6 +106,22 @@ export function ChangePasswordForm() {
         required
       />
 
+      <div className="rounded-lg bg-slate-50 p-3">
+        <p className="mb-1.5 text-xs font-medium text-slate-600">
+          Password requirements
+        </p>
+        <ul className="space-y-0.5 text-xs">
+          {passwordRequirements.map((req) => (
+            <li
+              key={req.label}
+              className={req.met ? "text-green-600" : "text-red-600"}
+            >
+              {req.met ? "✅" : "❌"} {req.label}
+            </li>
+          ))}
+        </ul>
+      </div>
+
       <Input
         label="Confirm new password"
         name="confirmPassword"
@@ -90,7 +133,22 @@ export function ChangePasswordForm() {
         required
       />
 
-      <Button type="submit" className="w-full" loading={loading}>
+      {confirmTouched ? (
+        <p
+          className={
+            passwordsMatch ? "text-sm text-green-600" : "text-sm text-red-600"
+          }
+        >
+          {passwordsMatch ? "✅ Passwords match" : "❌ Passwords do not match"}
+        </p>
+      ) : null}
+
+      <Button
+        type="submit"
+        className="w-full"
+        loading={loading}
+        disabled={!isPasswordValid || !passwordsMatch}
+      >
         Update password
       </Button>
     </form>

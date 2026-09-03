@@ -2,6 +2,34 @@
  * Generic utility helpers.
  */
 
+import { ENV } from "@/config/env";
+
+/** A single password requirement item for live validation UIs. */
+export interface PasswordRequirement {
+  label: string;
+  met: boolean;
+}
+
+/**
+ * Returns the four password-strength checks that mirror the backend's
+ * `PASSWORD_REGEX` in ``backend/apps/common/constants.py``.
+ *
+ * The backend requires:
+ *   1. 8+ characters
+ *   2. at least one uppercase letter
+ *   3. at least one lowercase letter
+ *   4. at least one digit
+ */
+export function getPasswordRequirements(password: string): PasswordRequirement[] {
+  return [
+    { label: "At least 8 characters", met: password.length >= 8 },
+    { label: "One uppercase letter", met: /[A-Z]/.test(password) },
+    { label: "One lowercase letter", met: /[a-z]/.test(password) },
+    { label: "One number", met: /\d/.test(password) },
+  ];
+}
+
+
 /** Simple class-name joiner (like clsx). */
 export function cn(...classes: (string | false | null | undefined)[]): string {
   return classes.filter(Boolean).join(" ");
@@ -86,4 +114,20 @@ export function getErrorMessage(error: unknown): string {
   }
 
   return "Something went wrong. Please try again.";
+}
+
+/**
+ * Resolve a user ID to an authenticated profile image URL.
+ *
+ * The backend stores the binary image data in MongoDB GridFS and
+ * exposes it through `/api/auth/profile/image/{user_id}/`.
+ */
+export function getProfileImageUrl(userId?: string | null, version?: string | null): string | undefined {
+  if (!userId) return undefined;
+  const backendOrigin = ENV.API_BASE_URL.replace(/\/api\/?$/, "");
+  const url = `${backendOrigin}/api/auth/profile/image/${userId}/`;
+  if (version) {
+    return `${url}?v=${encodeURIComponent(version)}`;
+  }
+  return url;
 }

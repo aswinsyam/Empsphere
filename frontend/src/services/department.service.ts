@@ -7,23 +7,30 @@ import { http } from "./api";
 import {
   CreateDepartmentPayload,
   Department,
+  DepartmentListResponse,
   UpdateDepartmentPayload,
 } from "@/types/department";
 
+/** Client for organization department endpoints. */
 export const departmentService = {
-  /** List all departments. */
-  async list(): Promise<Department[]> {
-    return http.get<Department[]>("/organization/departments/");
+  /** List departments with optional search and pagination. */
+   async list(params?: {
+    search?: string;
+    page?: number;
+    page_size?: number;
+    include_inactive?: boolean;
+  }): Promise<DepartmentListResponse> {
+    return http.get<DepartmentListResponse>("/departments/", params);
   },
 
   /** Get a single department by id. */
   async getById(id: string): Promise<Department> {
-    return http.get<Department>(`/organization/departments/${id}/`);
+    return http.get<Department>(`/departments/${id}/`);
   },
 
   /** Create a department. */
   async create(payload: CreateDepartmentPayload): Promise<Department> {
-    return http.post<Department>("/organization/departments/", payload);
+    return http.post<Department>("/departments/", payload);
   },
 
   /** Update a department. */
@@ -31,11 +38,11 @@ export const departmentService = {
     id: string,
     payload: UpdateDepartmentPayload
   ): Promise<Department> {
-    return http.put<Department>(`/organization/departments/${id}/`, payload);
+    return http.put<Department>(`/departments/${id}/`, payload);
   },
 
   /** Delete (soft) a department. */
   async remove(id: string): Promise<null> {
-    return http.delete<null>(`/organization/departments/${id}/`);
+    return http.delete<null>(`/departments/${id}/`);
   },
 };

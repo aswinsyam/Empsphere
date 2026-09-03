@@ -1,12 +1,18 @@
 /**
  * ChangePasswordPage.
- * Protected screen for updating the current user's password.
+ *
+ * Protected page that renders the `ChangePasswordForm` with a page header.
+ * Accessible to any authenticated user who wants to update their password.
  */
 
 import { ChangePasswordForm } from "@/components/auth/ChangePasswordForm";
 import { PageHeader } from "@/components/common/PageHeader";
 
 export function ChangePasswordPage() {
+  /**
+   * Protected page with a header and `ChangePasswordForm`. Accessible
+   * to any authenticated user who wants to update their password.
+   */
   return (
     <div className="mx-auto max-w-xl">
       <PageHeader

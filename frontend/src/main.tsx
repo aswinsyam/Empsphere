@@ -1,6 +1,9 @@
 /**
- * Entry point.
- * Mounts the React application into the DOM.
+ * Application entry point.
+ *
+ * Mounts the React app into the DOM using React 18's `createRoot` API.
+ * Wraps the app in `React.StrictMode` for development-time checks
+ * and imports the global stylesheet.
  */
 
 import React from "react";

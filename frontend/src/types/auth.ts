@@ -12,41 +12,41 @@ export interface User {
   email: string;
   phone?: string;
   role: string;
-  profile_image?: string;
+  profile_image_id?: string;
   is_email_verified?: boolean;
   is_active?: boolean;
   last_login?: string | null;
   login_provider?: string;
 }
 
-/** Payload returned after a successful login. */
+/**
+ * Payload returned after a login attempt.
+ *
+ * When the user's email is not yet verified, the backend responds with
+ * `requires_otp: true` and no tokens. Otherwise, the full token payload
+ * is returned.
+ */
 export interface LoginResult {
-  user_id: string;
+  user_id?: string;
+  employee_code?: string;
+  first_name?: string;
+  last_name?: string;
+  full_name?: string;
   email: string;
-  role: string;
-  access_token: string;
-  refresh_token: string;
+  phone?: string;
+  role?: string;
+  profile_image_id?: string;
+  is_email_verified?: boolean;
+  login_provider?: string;
+  access_token?: string;
+  refresh_token?: string;
+  requires_otp?: boolean;
+  purpose?: string;
 }
 
 /** Payload returned after a successful registration. */
 export interface RegisterResult {
   user_id: string;
-}
-
-/** Decoded JWT payload. */
-export interface DecodedToken {
-  user_id: string;
-  email: string;
-  role: string;
-  token_type: "access" | "refresh";
-  exp: number;
-  iat: number;
-}
-
-/** Login request body. */
-export interface LoginPayload {
-  email: string;
-  password: string;
 }
 
 /** Register request body. */
@@ -60,26 +60,10 @@ export interface RegisterPayload {
   phone?: string;
 }
 
-/** Refresh token request body. */
-export interface RefreshTokenPayload {
-  refresh_token: string;
-}
-
-/** Change password request body. */
-export interface ChangePasswordPayload {
-  current_password: string;
-  new_password: string;
-}
-
-/** Forgot password request body. */
-export interface ForgotPasswordPayload {
+/** Login request body. */
+export interface LoginPayload {
   email: string;
-}
-
-/** Reset password request body. */
-export interface ResetPasswordPayload {
-  token: string;
-  new_password: string;
+  password: string;
 }
 
 /** Set password request body (Google users). */
@@ -88,36 +72,32 @@ export interface SetPasswordPayload {
   new_password: string;
 }
 
-/** Create user request body (Admin/HR/Employee). */
-export interface CreateUserPayload {
-  first_name: string;
-  last_name: string;
+/** Forgot password request body. */
+export interface ForgotPasswordPayload {
   email: string;
+}
+
+/**
+ * Reset password request body.
+ *
+ * The reset is authorized by the single-use `reset_token` returned by
+ * `verify-otp` with `purpose: "forgot_password"`.
+ */
+export interface ResetPasswordPayload {
+  reset_token: string;
   password: string;
-  phone?: string;
-  role: string;
-  department_id?: string | null;
-  designation_id?: string | null;
+  confirm_password: string;
 }
 
 /** Send OTP request body. */
 export interface SendOTPPayload {
   email?: string;
-  purpose?: "email_verification" | "password_reset" | "password_setup" | "login";
+  purpose?: string;
 }
 
 /** Verify OTP request body. */
 export interface VerifyOTPPayload {
   email: string;
   otp: string;
-  purpose?: "email_verification" | "password_reset" | "password_setup" | "login";
-}
-
-/** Result returned when OTP login is successful. */
-export interface LoginOTPResult {
-  user_id: string;
-  email: string;
-  role: string;
-  access_token: string;
-  refresh_token: string;
+  purpose?: string;
 }

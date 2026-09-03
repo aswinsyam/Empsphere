@@ -12,6 +12,7 @@ export interface Department {
   head_user_id?: string | null;
   organization_id?: string | null;
   is_active?: boolean;
+  employee_count?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -33,4 +34,21 @@ export interface UpdateDepartmentPayload {
   head_user_id?: string | null;
   organization_id?: string | null;
   is_active?: boolean;
+}
+
+/** Paginated department list response. */
+export interface DepartmentListResponse {
+  departments: Department[];
+  total_records: number;
+  total_pages: number;
+  page: number;
+  page_size: number;
+}
+
+/** List params for departments. */
+export interface DepartmentListParams {
+  search?: string;
+  page?: number;
+  page_size?: number;
+  include_inactive?: boolean;
 }

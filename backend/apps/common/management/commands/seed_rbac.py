@@ -1,98 +1,30 @@
 """
-Seed RBAC data: roles, permissions, and a default Super Admin user.
+Seed RBAC data: roles and a default Super Admin user.
 
 Usage:
     python manage.py seed_rbac [--email ...] [--password ...]
 """
-
 import os
+from datetime import datetime
 
 from django.core.management.base import BaseCommand
 
-from apps.common.core.collections import Collections
-from apps.common.core.roles import Role, ROLE_NAMES
-from apps.common.core.permissions import (
-    PERM_LOGIN,
-    PERM_LOGOUT,
-    PERM_PROFILE,
-    PERM_USER_CREATE,
-    PERM_USER_READ,
-    PERM_USER_UPDATE,
-    PERM_USER_DELETE,
-    PERM_ROLE_CREATE,
-    PERM_ROLE_READ,
-    PERM_ROLE_UPDATE,
-    PERM_ROLE_DELETE,
-    PERM_DEPARTMENT_CREATE,
-    PERM_DEPARTMENT_READ,
-    PERM_DEPARTMENT_UPDATE,
-    PERM_DEPARTMENT_DELETE,
-    PERM_EMPLOYEE_CREATE,
-    PERM_EMPLOYEE_READ,
-    PERM_EMPLOYEE_UPDATE,
-    PERM_EMPLOYEE_DELETE,
-    PERM_ATTENDANCE_READ,
-    PERM_ATTENDANCE_MARK,
-    PERM_ATTENDANCE_UPDATE,
-    PERM_LEAVE_CREATE,
-    PERM_LEAVE_APPROVE,
-    PERM_LEAVE_READ,
-    PERM_PAYROLL_CREATE,
-    PERM_PAYROLL_READ,
-    PERM_PAYROLL_UPDATE,
-    PERM_REPORT_VIEW,
-    PERM_REPORT_EXPORT,
-    PERM_NOTIFICATION_SEND,
-)
-from apps.common.database.mongo import mongo
-from apps.authentication.managers.password_manager import PasswordManager
-
-ALL_PERMISSIONS = [
-    PERM_LOGIN,
-    PERM_LOGOUT,
-    PERM_PROFILE,
-    PERM_USER_CREATE,
-    PERM_USER_READ,
-    PERM_USER_UPDATE,
-    PERM_USER_DELETE,
-    PERM_ROLE_CREATE,
-    PERM_ROLE_READ,
-    PERM_ROLE_UPDATE,
-    PERM_ROLE_DELETE,
-    PERM_DEPARTMENT_CREATE,
-    PERM_DEPARTMENT_READ,
-    PERM_DEPARTMENT_UPDATE,
-    PERM_DEPARTMENT_DELETE,
-    PERM_EMPLOYEE_CREATE,
-    PERM_EMPLOYEE_READ,
-    PERM_EMPLOYEE_UPDATE,
-    PERM_EMPLOYEE_DELETE,
-    PERM_ATTENDANCE_READ,
-    PERM_ATTENDANCE_MARK,
-    PERM_ATTENDANCE_UPDATE,
-    PERM_LEAVE_CREATE,
-    PERM_LEAVE_APPROVE,
-    PERM_LEAVE_READ,
-    PERM_PAYROLL_CREATE,
-    PERM_PAYROLL_READ,
-    PERM_PAYROLL_UPDATE,
-    PERM_REPORT_VIEW,
-    PERM_REPORT_EXPORT,
-    PERM_NOTIFICATION_SEND,
-]
+from apps.common.constants import Collections
+from apps.common.database import mongo
+from apps.common.utils import hash_password
 
 
 class Command(BaseCommand):
-    """Seed roles, permissions and a Super Admin user."""
+    """Seed roles and a Super Admin user."""
 
-    help = "Seed RBAC data (roles, permissions, super admin user)."
+    help = "Seed RBAC data (roles, super admin user)."
 
     def add_arguments(self, parser):
         parser.add_argument("--email", type=str, default=None)
         parser.add_argument("--password", type=str, default=None)
 
     def handle(self, *args, **options):
-        db = mongo.database
+        db = mongo
 
         email = options["email"] or os.getenv(
             "SUPER_ADMIN_EMAIL", "admin@empsphere.com"
@@ -102,36 +34,16 @@ class Command(BaseCommand):
         )
         employee_code = os.getenv("SUPER_ADMIN_EMPLOYEE_CODE", "EMP001")
 
-        # ---- Seed permissions ----
-        perm_col = db[Collections.PERMISSIONS]
-        perm_count = 0
-        for permission in ALL_PERMISSIONS:
-            perm_col.update_one(
-                {"key": permission},
-                {
-                    "$setOnInsert": {
-                        "key": permission,
-                        "name": permission,
-                        "is_active": True,
-                        "is_deleted": False,
-                    }
-                },
-                upsert=True,
-            )
-            perm_count += 1
-        self.stdout.write(self.style.SUCCESS("Seeded %d permissions." % perm_count))
-
         # ---- Seed roles ----
-        role_col = db[Collections.ROLES]
+        role_col = db["roles"]
         role_count = 0
-        for role in Role:
-            name = ROLE_NAMES[role]
+        for name in ["EMPLOYEE", "HR_MANAGER", "ADMIN", "SUPER_ADMIN"]:
             role_col.update_one(
                 {"name": name},
                 {
                     "$setOnInsert": {
                         "name": name,
-                        "code": role.value,
+                        "code": role_count + 1,
                         "description": "%s role" % name,
                         "is_active": True,
                         "is_deleted": False,
@@ -152,8 +64,6 @@ class Command(BaseCommand):
                 )
             )
         else:
-            from datetime import datetime
-
             now = datetime.utcnow()
             user_col.insert_one(
                 {
@@ -163,8 +73,8 @@ class Command(BaseCommand):
                     "full_name": "Super Admin",
                     "email": email.lower(),
                     "phone": "",
-                    "password": PasswordManager.hash_password(password),
-                    "role": ROLE_NAMES[Role.SUPER_ADMIN],
+                    "password": hash_password(password),
+                    "role": "SUPER_ADMIN",
                     "department_id": None,
                     "designation_id": None,
                     "profile_image": "",

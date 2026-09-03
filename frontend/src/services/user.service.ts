@@ -3,10 +3,7 @@
  */
 
 import { http } from "./api";
-import { api } from "@/config/axios";
-import { ApiResponse } from "@/types/api";
 import { UserProfile } from "@/types/user";
-import { CreateUserPayload } from "@/types/auth";
 
 /** Editable profile fields for the current user. */
 export interface UpdateProfilePayload {
@@ -15,6 +12,7 @@ export interface UpdateProfilePayload {
   phone?: string;
 }
 
+/** Client for current-user profile and account actions. */
 export const userService = {
   /** Fetch the current user's profile. */
   async getMe(): Promise<UserProfile> {
@@ -30,14 +28,10 @@ export const userService = {
   async uploadProfileImage(file: File): Promise<UserProfile> {
     const formData = new FormData();
     formData.append("profile_image", file);
-    const res = await api.post<ApiResponse<UserProfile>>(
-      "/auth/profile/upload-image/",
-      formData
-    );
-    return res.data.data;
+    return http.post<UserProfile>("/auth/profile/image/", formData);
   },
 
-/** Change the current user's password. */
+  /** Change the current user's password. */
   async changePassword(
     oldPassword: string,
     newPassword: string
@@ -46,10 +40,5 @@ export const userService = {
       old_password: oldPassword,
       new_password: newPassword,
     });
-  },
-
-  /** Create a new user (Admin/HR/Employee) with role-based permission. */
-  async createUser(payload: CreateUserPayload): Promise<{ user_id: string }> {
-    return http.post<{ user_id: string }>("/auth/create-user/", payload);
   },
 };

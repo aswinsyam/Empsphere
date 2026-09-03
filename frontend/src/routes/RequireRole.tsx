@@ -1,7 +1,10 @@
 /**
  * RequireRole.
+ *
  * Route guard that restricts access based on the authenticated user's role.
- * Redirects unauthorized users to the /unauthorized page.
+ * If the user's role is not in the allowed list, they are redirected to
+ * their own dashboard (or `/login` if unauthenticated). Renders `null`
+ * while auth state is initializing.
  */
 
 import { Navigate, useLocation } from "react-router-dom";
@@ -16,6 +19,11 @@ interface RequireRoleProps {
 }
 
 export function RequireRole({ roles, children }: RequireRoleProps) {
+  /**
+   * Redirects authenticated-but-unauthorized users to their own role's
+   * dashboard. Unauthenticated users are sent to `/login`. Renders
+   * `null` while auth state is initializing.
+   */
   const { user, initializing } = useAuth();
   const location = useLocation();
 

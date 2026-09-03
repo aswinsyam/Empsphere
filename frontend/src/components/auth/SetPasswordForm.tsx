@@ -1,15 +1,9 @@
 /**
  * SetPasswordForm.
  *
- * For Google-authenticated users who do not have a local password.
- *
- * Flow:
- *   1. Click "Send OTP" — the backend sends an OTP to the user's
- *      verified email (derived from the session, not the request body).
- *   2. Enter the OTP, new password, and confirm password.
- *   3. Submit — the backend verifies the OTP and stores the password.
- *
- * This reuses the existing OTP infrastructure (purpose="password_setup").
+ * Two-step form for Google-authenticated users who need to set a local
+ * password. Step 1 requests an OTP (purpose=`password_setup`); Step 2
+ * collects the OTP and new password. On success, redirects to login.
  */
 
 import { useState } from "react";
@@ -21,6 +15,11 @@ import { getErrorMessage } from "@/utils/helpers";
 import { ROUTES } from "@/utils/constants";
 
 export function SetPasswordForm() {
+  /**
+   * Two-step form for Google-authenticated users without a local password.
+   * Step 1 requests an OTP (`purpose="password_setup"`); Step 2 collects
+   * the OTP and new password. On success, redirects to login.
+   */
   const navigate = useNavigate();
 
   const [otp, setOtp] = useState("");
