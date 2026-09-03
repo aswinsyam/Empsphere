@@ -32,11 +32,21 @@ export const leaveService = {
     return http.post<{ leave_id: string }>("/leaves/", payload);
   },
 
-  /** Approve or reject leave. */
+  /**
+   * Approve or reject leave.
+   * The backend requires a non-empty reason for both decisions.
+   */
   async updateStatus(
     id: string,
-    status: "APPROVED" | "REJECTED"
+    status: "APPROVED" | "REJECTED",
+    reason: string
   ): Promise<LeaveRecord> {
-    return http.put<LeaveRecord>(`/leaves/${id}/`, { status });
+    const payload: Record<string, string> = { status };
+    if (status === "APPROVED") {
+      payload.approval_reason = reason;
+    } else {
+      payload.rejection_reason = reason;
+    }
+    return http.put<LeaveRecord>(`/leaves/${id}/`, payload);
   },
 };

@@ -14,6 +14,8 @@ export interface LeaveRecord {
   leave_type: string;
   reason?: string;
   status: string;
+  approval_reason?: string;
+  rejection_reason?: string;
   approved_by?: string;
   rejected_by?: string;
   created_at?: string;

@@ -33,6 +33,8 @@ const PUBLIC_AUTH_ENDPOINTS = [
   "/auth/send-otp/",
   "/auth/verify-otp/",
   "/auth/set-password/",
+  "/auth/forgot-password/",
+  "/auth/reset-password/",
 ];
 
 function isPublicEndpoint(url: string | undefined): boolean {
@@ -81,12 +83,13 @@ api.interceptors.response.use(
       const refreshToken = TokenUtil.getRefreshToken();
       if (refreshToken) {
         try {
-          const result = await axios.post<{ access_token: string; refresh_token: string }>(
-            `${ENV.API_BASE_URL}/auth/refresh-token/`,
-            { refresh_token: refreshToken }
-          );
-          const newAccessToken = result.data.access_token;
-          const newRefreshToken = result.data.refresh_token;
+           const result = await axios.post(
+             `${ENV.API_BASE_URL}/auth/refresh-token/`,
+             { refresh_token: refreshToken }
+           );
+           const tokenData = result.data.data || result.data;
+           const newAccessToken = tokenData.access_token;
+           const newRefreshToken = tokenData.refresh_token;
           TokenUtil.setTokens(newAccessToken, newRefreshToken);
           original.headers.Authorization = `Bearer ${newAccessToken}`;
           return api(original);

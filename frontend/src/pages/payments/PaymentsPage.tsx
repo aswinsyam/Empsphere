@@ -2,16 +2,13 @@
  * PaymentsPage.
  *
  * Professional office payment management page.
- *
- * Layout:
- * - Payment History as main view
- * - "+ Make Payment" button opens modal
- * - Modal contains: Payment For -> Employee (optional) -> Amenity -> Amount -> Make Payment
  */
 
-import { useEffect, useState, useCallback } from "react";
-import { usePayment } from "@/hooks/usePayment";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { paymentService } from "@/services/payment.service";
+import { employeeService } from "@/services/employee.service";
+import { departmentService } from "@/services/department.service";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/common/Button";
 import { Loader } from "@/components/common/Loader";
@@ -21,49 +18,41 @@ import { Modal } from "@/components/common/Modal";
 import { formatDate } from "@/utils/helpers";
 import { ROLES } from "@/utils/constants";
 import { Payment, Amenity } from "@/types/payment";
-import { paymentService } from "@/services/payment.service";
-import { employeeService } from "@/services/employee.service";
-import { departmentService } from "@/services/department.service";
 import { Employee } from "@/types/employee";
 import { Department } from "@/types/department";
 
 type PaymentFor = "myself" | "employee";
 
 export function PaymentsPage() {
-  const {
-    payments,
-    amenities,
-    total_records,
-    total_pages,
-    page,
-    loading,
-    amenitiesLoading,
-    error,
-    list,
-    verify,
-    cancel,
-    loadMyPayments,
-    loadAmenities,
-  } = usePayment();
   const { user } = useAuth();
+
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [amenities, setAmenities] = useState<Amenity[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [amenitiesLoading, setAmenitiesLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [amenitiesError, setAmenitiesError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageSize] = useState(10);
 
   const isEmployee = user?.role === ROLES.EMPLOYEE;
   const isSuperAdmin = user?.role === ROLES.SUPER_ADMIN;
   const canViewAll = Boolean(user?.role && user.role !== ROLES.EMPLOYEE);
 
-  // Modal state
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+
   const [modalOpen, setModalOpen] = useState(false);
   const [paymentFor, setPaymentFor] = useState<PaymentFor>(isEmployee ? "myself" : "myself");
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
   const [selectedAmenity, setSelectedAmenity] = useState<Amenity | null>(null);
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
-  const [amenitiesError, setAmenitiesError] = useState<string | null>(null);
 
   const [filters, setFilters] = useState({
     employee_id: "",
@@ -73,63 +62,61 @@ export function PaymentsPage() {
     date: "",
   });
 
-  // Load amenities and employee/department data on mount
   useEffect(() => {
-    loadAmenitiesWrapper();
     if (canViewAll) {
-      employeeService.list({ page_size: 100 }).then((res) => {
-        setEmployees(res.employees || []);
-      });
-      departmentService.list({ page_size: 100 }).then((res) => {
-        setDepartments(res.departments || []);
-      });
+      employeeService.list({ page_size: 100 }).then((r) => setEmployees(r.employees || []));
+      departmentService.list({ page_size: 100 }).then((r) => setDepartments(r.departments || []));
     }
-  }, [canViewAll, loadAmenities]);
+  }, [canViewAll]);
 
-  // Wrapper to handle amenities loading with error state
-  const loadAmenitiesWrapper = async () => {
+  const loadAmenities = async () => {
+    setAmenitiesLoading(true);
+    setAmenitiesError(null);
     try {
-      setAmenitiesError(null);
-      await loadAmenities();
-    } catch (err) {
+      const result = await paymentService.getAmenities();
+      setAmenities(result);
+    } catch {
       setAmenitiesError("Failed to load amenities. Please try again.");
+    } finally {
+      setAmenitiesLoading(false);
     }
   };
 
-  // Load amenities when modal opens if not already loaded
-  const ensureAmenitiesLoaded = async () => {
-    if (amenities.length === 0 && !amenitiesLoading) {
-      await loadAmenitiesWrapper();
+  const loadData = async (pageNum = 1) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = isEmployee
+        ? await paymentService.getMyPayments({
+            status: filters.status || undefined,
+            date: filters.date || undefined,
+            page: pageNum,
+            page_size: pageSize,
+          })
+        : await paymentService.list({
+            employee_id: filters.employee_id || undefined,
+            department_id: filters.department_id || undefined,
+            amenity_id: filters.amenity_id || undefined,
+            status: filters.status || undefined,
+            date: filters.date || undefined,
+            page: pageNum,
+            page_size: pageSize,
+          });
+      setPayments(result.payments);
+      setPage(result.page);
+      setTotalPages(result.total_pages);
+      setTotalRecords(result.total_records);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load payments");
+    } finally {
+      setLoading(false);
     }
   };
-
-  const loadData = useCallback(
-    (pageNum = 1) => {
-      if (isEmployee) {
-        loadMyPayments({
-          status: filters.status || undefined,
-          date: filters.date || undefined,
-          page: pageNum,
-          page_size: 10,
-        });
-      } else {
-        list({
-          employee_id: filters.employee_id || undefined,
-          department_id: filters.department_id || undefined,
-          amenity_id: filters.amenity_id || undefined,
-          status: filters.status || undefined,
-          date: filters.date || undefined,
-          page: pageNum,
-          page_size: 10,
-        });
-      }
-    },
-    [isEmployee, filters, list, loadMyPayments]
-  );
 
   useEffect(() => {
     loadData(1);
-  }, [isEmployee, user?._id, filters.employee_id, filters.department_id, filters.amenity_id, filters.status, filters.date, loadData]);
+    loadAmenities();
+  }, [isEmployee, filters]);
 
   const openModal = async () => {
     setModalOpen(true);
@@ -138,8 +125,7 @@ export function PaymentsPage() {
     setPaymentFor(isEmployee ? "myself" : "myself");
     setSelectedEmployeeId(isEmployee ? user?._id || "" : "");
     setSelectedAmenity(null);
-    // Ensure amenities are loaded when modal opens
-    await ensureAmenitiesLoaded();
+    await loadAmenities();
   };
 
   const closeModal = () => {
@@ -175,14 +161,14 @@ export function PaymentsPage() {
     return true;
   };
 
-  const loadCashfreeScript = (): Promise<boolean> => {
+  const loadRazorpayScript = (): Promise<boolean> => {
     return new Promise((resolve) => {
-      if (document.querySelector('script[src="https://sdk.cashfree.com/js/v3/cashfree.js"]')) {
+      if ((window as any).Razorpay) {
         resolve(true);
         return;
       }
       const script = document.createElement("script");
-      script.src = "https://sdk.cashfree.com/js/v3/cashfree.js";
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
       script.onload = () => resolve(true);
       script.onerror = () => resolve(false);
       document.body.appendChild(script);
@@ -192,13 +178,13 @@ export function PaymentsPage() {
   const handlePaymentSuccess = async (
     paymentId: string,
     response: {
-      gateway_order_id: string;
-      gateway_payment_id: string;
-      payment_status: string;
+      razorpay_order_id: string;
+      razorpay_payment_id: string;
+      razorpay_signature: string;
     }
   ) => {
     try {
-      await verify(paymentId, response);
+      await paymentService.verify(paymentId, response);
       setPaymentSuccess("Payment Successful");
       setTimeout(() => {
         closeModal();
@@ -206,55 +192,59 @@ export function PaymentsPage() {
       }, 1500);
     } catch (err) {
       setFormError(
-        err && typeof err === "object" && "message" in err
-          ? String((err as { message: string }).message)
-          : "Payment verification failed."
+        err instanceof Error ? err.message : "Payment verification failed."
       );
     }
   };
 
-  const openCashfreeCheckout = async (orderData: {
+  const openRazorpayCheckout = async (orderData: {
     payment_id: string;
     order_id: string;
-    payment_session_id: string;
     amount: number;
     currency: string;
+    key_id: string;
   }) => {
-    const scriptLoaded = await loadCashfreeScript();
+    const scriptLoaded = await loadRazorpayScript();
     if (!scriptLoaded) {
       setFormError("Failed to load payment gateway. Please try again.");
       return;
     }
 
-    const cashfree = (window as any).Cashfree({
-      mode: "sandbox",
-    });
+    const options: any = {
+      key: orderData.key_id,
+      amount: Math.round(orderData.amount * 100),
+      currency: orderData.currency,
+      name: "EmpSphere",
+      description: "Office amenity payment",
+      order_id: orderData.order_id,
+      handler: (response: {
+        razorpay_order_id: string;
+        razorpay_payment_id: string;
+        razorpay_signature: string;
+      }) => {
+        handlePaymentSuccess(orderData.payment_id, {
+          razorpay_order_id: response.razorpay_order_id,
+          razorpay_payment_id: response.razorpay_payment_id,
+          razorpay_signature: response.razorpay_signature,
+        });
+      },
+      modal: {
+        ondismiss: () => {
+          setFormError("Payment was cancelled.");
+        },
+      },
+      theme: {
+        color: "#4f46e5",
+      },
+    };
 
-    cashfree
-      .checkout({
-        paymentSessionId: orderData.payment_session_id,
-        redirectTarget: "_modal",
-      })
-      .then((result: any) => {
-        if (result.error) {
-          setFormError("Payment was cancelled or failed. Please try again.");
-          return;
-        }
-        if (result.paymentDetails) {
-          handlePaymentSuccess(orderData.payment_id, {
-            gateway_order_id: orderData.order_id,
-            gateway_payment_id: result.paymentDetails.cfPaymentId || "",
-            payment_status: result.paymentDetails.paymentStatus || "",
-          });
-        }
-      })
-      .catch((err: any) => {
-        setFormError(
-          err && typeof err === "object" && "message" in err
-            ? String((err as { message: string }).message)
-            : "Payment failed. Please try again."
-        );
-      });
+    const razorpay = new (window as any).Razorpay(options);
+    razorpay.on("payment.failed", (response: any) => {
+      setFormError(
+        response?.error?.description || "Payment failed. Please try again."
+      );
+    });
+    razorpay.open();
   };
 
   const handleMakePayment = async () => {
@@ -273,13 +263,9 @@ export function PaymentsPage() {
         employee_id: employeeId,
         amenity_id: selectedAmenity!.amenity_id,
       });
-      await openCashfreeCheckout(result);
+      await openRazorpayCheckout(result);
     } catch (err) {
-      setFormError(
-        err && typeof err === "object" && "message" in err
-          ? String((err as { message: string }).message)
-          : "Something went wrong."
-      );
+      setFormError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setSubmitting(false);
     }
@@ -288,10 +274,10 @@ export function PaymentsPage() {
   const handleCancel = async (payment: Payment) => {
     if (!window.confirm(`Cancel payment for "${payment.amenity_name}"?`)) return;
     try {
-      await cancel(payment.payment_id);
-      loadData(page);
+      await paymentService.cancel(payment.payment_id);
+      loadData(1);
     } catch {
-      // handled by slice
+      // error handled silently
     }
   };
 
@@ -362,21 +348,6 @@ export function PaymentsPage() {
                 {departments.map((dept) => (
                   <option key={dept.department_id} value={dept.department_id}>
                     {dept.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="min-w-[150px]">
-              <label className="label">Amenity</label>
-              <select
-                value={filters.amenity_id}
-                onChange={(e) => setFilters({ ...filters, amenity_id: e.target.value })}
-                className="input"
-              >
-                <option value="">All Amenities</option>
-                {amenities.map((amenity) => (
-                  <option key={amenity.amenity_id} value={amenity.amenity_id}>
-                    {amenity.name}
                   </option>
                 ))}
               </select>
@@ -525,11 +496,11 @@ export function PaymentsPage() {
         </div>
       )}
 
-      {total_pages > 1 && (
+      {totalPages > 1 && (
         <Pagination
           page={page}
-          totalPages={total_pages}
-          totalRecords={total_records}
+          totalPages={totalPages}
+          totalRecords={totalRecords}
           onPageChange={(nextPage) => loadData(nextPage)}
         />
       )}
@@ -619,9 +590,7 @@ export function PaymentsPage() {
             ) : amenitiesError ? (
               <div className="space-y-2">
                 <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{amenitiesError}</div>
-                <Button variant="ghost" onClick={loadAmenitiesWrapper}>
-                  Retry
-                </Button>
+                <Button variant="ghost" onClick={loadAmenities}>Retry</Button>
               </div>
             ) : amenities.length === 0 ? (
               <div className="rounded-lg bg-yellow-50 p-3 text-sm text-yellow-700">

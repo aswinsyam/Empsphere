@@ -12,7 +12,7 @@ export interface PasswordRequirement {
 
 /**
  * Returns the four password-strength checks that mirror the backend's
- * `PASSWORD_REGEX` in ``backend/apps/common/core/regex.py``.
+ * `PASSWORD_REGEX` in ``backend/apps/common/constants.py``.
  *
  * The backend requires:
  *   1. 8+ characters

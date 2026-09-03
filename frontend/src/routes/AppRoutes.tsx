@@ -7,7 +7,7 @@
  * while role-specific dashboards add an additional `RequireRole` guard.
  */
 
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { RequireRole } from "./RequireRole";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -20,10 +20,7 @@ import { ForgotPasswordPage } from "@/pages/auth/ForgotPasswordPage";
 import { ResetPasswordPage } from "@/pages/auth/ResetPasswordPage";
 import { ProfilePage } from "@/pages/profile/ProfilePage";
 import { DashboardRedirect } from "./DashboardRedirect";
-import { SuperAdminDashboardPage } from "@/pages/dashboard/SuperAdminDashboardPage";
-import { AdminDashboardPage } from "@/pages/dashboard/AdminDashboardPage";
-import { HRDashboardPage } from "@/pages/dashboard/HRDashboardPage";
-import { EmployeeDashboardPage } from "@/pages/dashboard/EmployeeDashboardPage";
+import { DashboardPage } from "@/pages/dashboard/DashboardPage";
 import { EmployeesPage } from "@/pages/employees/EmployeesPage";
 import { EmployeeDetailPage } from "@/pages/employees/EmployeeDetailPage";
 import { AttendancePage } from "@/pages/attendance/AttendancePage";
@@ -36,6 +33,12 @@ import { PaymentsPage } from "@/pages/payments/PaymentsPage";
 import { ReportsPage } from "@/pages/reports/ReportsPage";
 import { NotFoundPage } from "@/pages/errors/NotFoundPage";
 import { UnauthorizedPage } from "@/pages/errors/UnauthorizedPage";
+import { HomePage } from "@/pages/public/HomePage";
+import { AboutPage } from "@/pages/public/AboutPage";
+import { ContactPage } from "@/pages/public/ContactPage";
+import { TermsPage } from "@/pages/public/TermsPage";
+import { PrivacyPage } from "@/pages/public/PrivacyPage";
+import { CancellationRefundPage } from "@/pages/public/CancellationRefundPage";
 import { ROLES, EMPLOYEE_MANAGEMENT_ROLES } from "@/utils/constants";
 
 export function AppRoutes() {
@@ -63,7 +66,7 @@ export function AppRoutes() {
             path="/dashboard/super-admin"
             element={
               <RequireRole roles={[ROLES.SUPER_ADMIN]}>
-                <SuperAdminDashboardPage />
+                <DashboardPage role={ROLES.SUPER_ADMIN} />
               </RequireRole>
             }
           />
@@ -71,7 +74,7 @@ export function AppRoutes() {
             path="/dashboard/admin"
             element={
               <RequireRole roles={[ROLES.ADMIN]}>
-                <AdminDashboardPage />
+                <DashboardPage role={ROLES.ADMIN} />
               </RequireRole>
             }
           />
@@ -79,7 +82,7 @@ export function AppRoutes() {
             path="/dashboard/hr"
             element={
               <RequireRole roles={[ROLES.HR_MANAGER]}>
-                <HRDashboardPage />
+                <DashboardPage role={ROLES.HR_MANAGER} />
               </RequireRole>
             }
           />
@@ -87,7 +90,7 @@ export function AppRoutes() {
             path="/dashboard/employee"
             element={
               <RequireRole roles={[ROLES.EMPLOYEE]}>
-                <EmployeeDashboardPage />
+                <DashboardPage role={ROLES.EMPLOYEE} />
               </RequireRole>
             }
           />
@@ -164,7 +167,15 @@ export function AppRoutes() {
       </Route>
 
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+      {/* Public website (no auth required) */}
+      <Route path="/" element={<HomePage />} />
+      <Route path="/about" element={<AboutPage />} />
+      <Route path="/contact" element={<ContactPage />} />
+      <Route path="/terms" element={<TermsPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/cancellation-refund" element={<CancellationRefundPage />} />
+
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );

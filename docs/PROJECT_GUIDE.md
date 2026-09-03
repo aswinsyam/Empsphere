@@ -1,461 +1,522 @@
 # EmpSphere — Complete Project Guide
 
-A beginner-friendly guide to understanding the EmpSphere employee management system.
+A beginner-friendly guide to understanding the EmpSphere Employee Management System.
 
 ---
 
 ## Table of Contents
 
 1. [What is EmpSphere?](#1-what-is-empsphere)
-2. [Why does it exist?](#2-why-does-it-exist)
-3. [Technology Stack](#3-technology-stack)
-4. [Project Structure](#4-project-structure)
-5. [Architecture Overview](#5-architecture-overview)
-6. [Backend Deep Dive](#6-backend-deep-dive)
-7. [Frontend Deep Dive](#7-frontend-deep-dive)
-8. [Database — MongoDB](#8-database--mongodb)
-9. [Authentication](#9-authentication)
-10. [Authorization / RBAC](#10-authorization--rbac)
+2. [Technology Stack](#2-technology-stack)
+3. [Current Project Structure](#3-current-project-structure)
+4. [Backend Architecture](#4-backend-architecture)
+5. [Frontend Architecture](#5-frontend-architecture)
+6. [How a Request Travels Through the System](#6-how-a-request-travels-through-the-system)
+7. [Authentication](#7-authentication)
+8. [JWT Authentication](#8-jwt-authentication)
+9. [Authorization and Roles](#9-authorization-and-10-roles)
+10. [Permission Decorator](#10-permission-decorator)
 11. [Employee Management](#11-employee-management)
-12. [Organization — Departments & Designations](#12-organization--departments--designations)
-13. [Attendance](#13-attendance)
-14. [Leave Management](#14-leave-management)
-15. [Payment System — Cashfree Sandbox](#15-payment-system--cashfree-sandbox)
-16. [Activity Logs](#16-activity-logs)
-17. [Reports](#17-reports)
-18. [Statistics / Dashboard](#18-statistics--dashboard)
-19. [Environment Variables](#19-environment-variables)
-20. [Running the Project](#20-running-the-project)
-21. [Cashfree Sandbox Setup](#21-cashfree-sandbox-setup)
-22. [Debugging Guide](#22-debugging-guide)
-23. [Verification](#23-verification)
-24. [Deployment](#24-deployment)
-25. [Safe Future Development](#25-safe-future-development)
-26. [Fresher Learning Path](#26-fresher-learning-path)
-27. [How EmpSphere Works (Summary)](#27-how-empsphere-works-summary)
+12. [Employee Creation — Complete Flow](#12-employee-creation--complete-flow)
+13. [Departments](#13-departments)
+14. [Designations](#14-designations)
+15. [Attendance](#15-attendance)
+16. [Leave Management](#16-leave-management)
+17. [Profile and Image Upload](#17-profile-and-image-upload)
+18. [Payment System](#18-payment-system)
+19. [Activity Logs](#19-activity-logs)
+20. [Reports](#20-reports)
+21. [Statistics and Dashboards](#21-statistics-and-dashboards)
+22. [MongoDB](#22-mongodb)
+23. [Axios and API Communication](#23-axios-and-api-communication)
+24. [Environment Variables](#24-environment-variables)
+25. [Running the Project](#25-running-the-project)
+26. [Verification](#26-verification)
+27. [Debugging Guide](#27-debugging-guide)
+28. [Deployment](#28-deployment)
+29. [Safe Development Rules](#29-safe-development-rules)
+30. [Fresher Learning Path](#30-fresher-learning-path)
+31. [Quick File Reference](#31-quick-file-reference)
+32. [How EmpSphere Works — Final Summary](#32-how-empsphere-works--final-summary)
 
 ---
 
 ## 1. What is EmpSphere?
 
-EmpSphere is a **full-stack Employee Management System (EMS)**. It helps organizations manage:
+EmpSphere is a **full-stack Employee Management System** that helps a company manage:
 
-- Employee records
+- Employee records (create, list, update, delete)
 - Departments and designations
 - Attendance (check-in / check-out)
 - Leave applications and approvals
-- Office amenity payments (via Cashfree)
-- Activity logging and audit trails
-- Reports and dashboard statistics
+- Office amenity payments via **Razorpay (Test Mode)**
+- Activity logging (audit trail)
+- Dashboard statistics and reports
 
-The system enforces **Role-Based Access Control (RBAC)** so that different users see only what they are allowed to see.
-
----
-
-## 2. Why does it exist?
-
-Managing employees with spreadsheets or paper records is error-prone and hard to audit. EmpSphere provides:
-
-- A **single source of truth** for employee data (MongoDB).
-- **Role-based access** so employees, HR, admins, and super admins each see only their relevant data.
-- **Audit trails** (activity logs) so every important action is recorded.
-- **Automated attendance and leave workflows** instead of manual tracking.
-- **Digital payments** for office amenities via Cashfree.
+The system uses **role-based access control (RBAC)** so a Super Admin, Admin, HR Manager, and Employee each see only what they are allowed to see.
 
 ---
 
-## 3. Technology Stack
+## 2. Technology Stack
 
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| Backend framework | Django 4.2 + Django REST Framework | HTTP API, request handling |
+| Layer | Technology | Why |
+|-------|-----------|-----|
+| Backend framework | Django 4.2 + DRF | HTTP API, request handling |
 | Backend language | Python 3.8+ | Business logic |
-| Database driver | PyMongo | Talk to MongoDB |
-| Auth tokens | PyJWT | JSON Web Tokens |
-| Config | python-dotenv | Load `.env` variables |
-| Frontend framework | React 18 + TypeScript | UI |
+| Database driver | PyMongo 4.10 | Talk to MongoDB |
+| Auth | PyJWT 2.9 | Issue and verify access / refresh tokens |
+| Password hashing | passlib + bcrypt | Secure password storage |
+| Config | python-dotenv | Load secrets from `.env` |
+| Frontend | React 18 + TypeScript | UI |
 | Build tool | Vite 5 | Fast dev server and production build |
-| State management | Redux Toolkit | Global application state |
+| State (auth) | Redux Toolkit | Holds logged-in user globally |
 | Routing | React Router v7 | Page navigation |
-| HTTP client | Axios | API calls to backend |
+| HTTP client | Axios | API calls + JWT refresh interceptor |
 | Styling | Tailwind CSS | Utility-first CSS |
 | Database | MongoDB | Primary data store |
-| Django internal DB | SQLite (in-memory) | Django's internal tables |
-| Payments | Cashfree (Sandbox) | Office amenity payments |
+| Payments | Razorpay (Test Mode) | Office amenity payments |
+
+> **Note:** The `DATABASES` setting in `config/settings.py` points to an in-memory SQLite database (`:memory:`). This is only used by Django itself for internal tables. All real data is in **MongoDB**.
 
 ---
 
-## 4. Project Structure
+## 3. Current Project Structure
 
 ```
 EmpSphere/
-├── backend/                  # Django REST API
-│   ├── config/               # Django project settings, URLs, WSGI/ASGI
-│   ├── apps/                 # All business modules
-│   │   ├── authentication/   # Login, register, JWT, OTP, password, Google
-│   │   ├── common/           # Shared utilities (middleware, base classes, RBAC)
-│   │   ├── employee/         # Employee CRUD
-│   │   ├── organization/     # Departments and designations
-│   │   ├── attendance/       # Check-in / check-out
-│   │   ├── leave/            # Leave apply / approve
-│   │   ├── payment/          # Cashfree payments + amenities
-│   │   ├── activity_logs/    # Audit trail
-│   │   ├── reports/          # Management reports
-│   │   └── statistics/       # Dashboard statistics
-│   ├── manage.py             # Django management command
-│   ├── requirements.txt      # Python dependencies
-│   └── .env                  # Backend secrets (gitignored)
-├── frontend/                 # React + TypeScript SPA
-│   ├── src/
-│   │   ├── components/       # Reusable UI components
-│   │   ├── pages/            # Route-level page components
-│   │   ├── routes/           # Route definitions and guards
-│   │   ├── services/         # API service functions
-│   │   ├── hooks/            # Custom React hooks
-│   │   ├── store/            # Redux store and slices
-│   │   ├── types/            # TypeScript type definitions
-│   │   ├── utils/            # Helpers, constants, token storage
-│   │   └── config/           # Axios config, env config
-│   ├── package.json          # Node dependencies
-│   └── .env                  # Frontend config (gitignored)
-├── docs/                     # Documentation (this file)
-├── .github/workflows/        # CI pipeline
-├── README.md                 # Project overview
-└── .gitignore                # Git ignore rules
+├── backend/
+│   ├── config/                 # Django project (settings, urls, wsgi/asgi)
+│   ├── apps/
+│   │   ├── authentication/     # register / login / JWT / OTP / password / Google
+│   │   ├── common/             # shared utilities (auth, permissions, db, settings, constants)
+│   │   ├── employees/          # Employee CRUD
+│   │   ├── departments/        # Department CRUD
+│   │   ├── designations/       # Designation CRUD
+│   │   ├── attendance/         # Check-in / check-out
+│   │   ├── leaves/             # Apply / approve leave
+│   │   ├── payments/           # Razorpay payments + amenities
+│   │   ├── activity_logs/      # Audit log read endpoint
+│   │   ├── reports/            # Management reports
+│   │   └── statistics/         # Dashboard counts
+│   ├── manage.py
+│   ├── requirements.txt
+│   └── .env
+├── frontend/                   # React + TypeScript SPA
+│   └── src/
+│       ├── components/         # UI components (auth, layout, common, dashboard, ...)
+│       ├── pages/              # Page-level components (one folder per feature)
+│       ├── routes/             # AppRoutes, ProtectedRoute, RequireRole, DashboardRedirect
+│       ├── services/           # One file per feature, calls Axios
+│       ├── hooks/              # useAuth, useResource, useDashboardData
+│       ├── store/              # Redux store (only auth slice)
+│       ├── types/              # TypeScript types
+│       ├── utils/              # token storage, helpers, csv export, constants
+│       └── config/             # axios + env
+├── docs/                       # this file
+├── .github/workflows/          # CI
+├── README.md
+└── .gitignore
 ```
 
-### Backend Folder Details
-
-Each backend module (e.g., `employee/`, `attendance/`) follows the same layered structure:
+Each backend app follows the same simple shape:
 
 ```
-employee/
-├── controllers/      # Handle HTTP requests/responses
-├── services/         # Business logic
-├── repositories/     # Database access (MongoDB)
-├── serializers/      # Validate and normalize request data
-├── validators/       # Input validation rules
-├── dtos/             # Data Transfer Objects (typed data containers)
-└── urls.py           # Module URL routes
+<app>/
+├── views.py          # HTTP endpoints (DRF APIView)
+├── services.py       # Business logic
+├── serializers.py    # Request validation
+├── urls.py           # URL routes for this app
+└── apps.py           # Django app config
 ```
 
-### Frontend Folder Details
-
-```
-src/
-├── components/       # Reusable UI (buttons, modals, forms, layout)
-│   ├── common/       # Shared components (Button, Modal, Loader, etc.)
-│   ├── auth/         # Auth forms (Login, Register, ForgotPassword, etc.)
-│   ├── layout/       # DashboardLayout, Sidebar, Navbar
-│   └── ...           # Feature-specific form modals
-├── pages/            # One folder per feature (employees, attendance, etc.)
-├── routes/           # AppRoutes, ProtectedRoute, RequireRole
-├── services/         # One service file per feature (API calls)
-├── hooks/            # One hook per feature (useAuth, useEmployees, etc.)
-├── store/
-│   ├── slices/       # Redux slices (auth, employee, payment, etc.)
-│   └── middleware/   # Auth middleware
-├── types/            # TypeScript interfaces per feature
-├── utils/            # Constants, token helpers, CSV export, env
-└── config/           # Axios instance, env loader
-```
+There is **no** `controllers/`, `repositories/`, `dtos/`, `validators/`, `managers/`, or `schemas/` layer. Services talk to MongoDB directly through `get_collection(...)`. This keeps the code short and easy to follow.
 
 ---
 
-## 5. Architecture Overview
+## 4. Backend Architecture
 
-EmpSphere uses a **layered architecture** that separates concerns clearly.
-
-### Backend Flow
+The whole backend follows one simple flow:
 
 ```
 HTTP Request
-    ↓
-Django URL (config/urls.py → apps/*/urls.py)
-    ↓
-Controller (apps/*/controllers/*)
-    ↓  handles HTTP, extracts data, returns response
-Serializer / Validator
-    ↓  validates and normalizes request data
-Service (apps/*/services/*)
-    ↓  contains business logic
-Repository (apps/*/repositories/*)
-    ↓  talks to MongoDB
+   ↓
+URL  (config/urls.py → apps/<app>/urls.py)
+   ↓
+View (apps/<app>/views.py)
+   ↓ validates with a DRF serializer
+Service (apps/<app>/services.py)
+   ↓ talks to MongoDB
+get_collection("...")
+   ↓
 MongoDB
 ```
 
-**Why this separation?**
+### Example: Creating an employee
 
-- **Controller** — knows about HTTP only. It extracts request data and returns a response. No business logic.
-- **Serializer** — validates incoming data. Ensures the service never receives bad data.
-- **Service** — contains all business rules. This is where decisions are made (e.g., "an employee cannot approve their own leave").
-- **Repository** — knows about MongoDB only. It performs queries and returns raw documents.
-- **MongoDB** — stores the data.
-
-### Frontend Flow
-
-```
-User clicks a button
-    ↓
-React component handles the event
-    ↓
-Hook function executes (e.g., usePayment)
-    ↓
-Redux slice dispatches an async thunk
-    ↓
-Service calls Axios
-    ↓
-Axios sends HTTP request to Django
-    ↓
-Backend processes (Controller → Service → Repository → MongoDB)
-    ↓
-Backend returns JSON response
-    ↓
-Axios receives response
-    ↓
-Redux slice updates state
-    ↓
-React re-renders the UI
-```
-
----
-
-## 6. Backend Deep Dive
-
-### 6.1 config/ — Django Project Configuration
-
-- **`config/settings.py`** — Main Django settings. Loads `.env`, configures installed apps, middleware, REST framework, JWT, email, CORS, and logging.
-- **`config/urls.py`** — Root URL configuration. Routes `/api/auth/`, `/api/employees/`, `/api/payment/`, etc. to their respective modules.
-
-### 6.2 apps/common/ — Shared Utilities
-
-This module contains code reused across the entire backend.
-
-| Folder | Purpose |
-|--------|---------|
-| `base/` | `BaseController`, `BaseService`, `BaseManager` — parent classes for all controllers/services/managers |
-| `config/settings.py` | Centralized settings object that reads all `.env` variables |
-| `core/` | `roles.py` (Role enum), `permissions.py` (permission constants + mapping), `collections.py` (MongoDB collection names), `status.py` (HTTP status codes) |
-| `database/mongo.py` | Singleton MongoDB connection (`mongo` instance) |
-| `decorators/permission.py` | `@require_role(...)` decorator for controller authorization |
-| `permissions/role_permission.py` | `RolePermission` helper — hierarchy checks, `can_manage_user`, `owns_resource` |
-| `middleware/` | `JWTAuthentication` (custom DRF auth), `ExceptionMiddleware`, `RequestLoggerMiddleware` |
-| `exceptions/` | Custom exception classes and a global exception handler |
-| `responses/api_response.py` | `ApiResponse` — consistent JSON response format (`{ success, message, data, meta }`) |
-| `security/` | `PasswordManager` (bcrypt hashing), `GoogleManager` (Google OAuth token verification) |
-| `management/commands/` | `seed_rbac` (creates roles, permissions, super admin), `seed_amenities` (creates test amenities) |
-
-### 6.3 Request Flow Example (Creating an Employee)
-
-```
+```text
 POST /api/employees/
-    ↓
-config/urls.py → apps/employee/urls.py
-    ↓
-EmployeeController.post()                     [apps/employee/controllers/employee_controller.py]
-    ↓  @require_role(SUPER_ADMIN, ADMIN, HR_MANAGER)
-    ↓  EmployeeSerializer validates data
-    ↓  Creates EmployeeDTO
-    ↓
-EmployeeService.create_employee(dto)          [apps/employee/services/employee_service.py]
-    ↓  Business logic, validation
-    ↓
-EmployeeRepository.create(document)           [apps/employee/repositories/employee_repository.py]
-    ↓  mongo.get_collection("users").insert_one(...)
-    ↓
+   ↓
+config/urls.py → apps/employees/urls.py
+   ↓
+EmployeeView.post()                                 apps/employees/views.py
+   ↓   @require_role("SUPER_ADMIN", "ADMIN", "HR_MANAGER")
+   ↓   EmployeeSerializer.is_valid(...)
+   ↓
+EmployeeService.create_employee(data)               apps/employees/services.py
+   ↓   hash password, validate email/role/status
+   ↓   audit log
+   ↓
+get_collection("users").insert_one(...)
+   ↓
 MongoDB "users" collection
-    ↓
-Response flows back: Service → Controller → JSON response
+   ↓
+Response: { "user_id": "<new employee ObjectId>" }
 ```
 
----
+### Why a service layer?
 
-## 7. Frontend Deep Dive
+- The view is small and only deals with HTTP (request, validation, response).
+- The service contains the **business rules** (who can do what, what email is valid, what role is allowed).
+- The data access is **direct** — there is no repository wrapper. PyMongo is already a thin, friendly API.
 
-### 7.1 Entry Point
+### The common app
 
-- **`main.tsx`** — React entry point. Renders `<App />` into the DOM.
-- **`App.tsx`** — Root component. Composes:
-  - `Provider` (Redux store)
-  - `BrowserRouter` (client-side routing)
-  - `ToastProvider` (global notifications)
-  - `AppBootstrap` (restores session on load)
-  - `AppRoutes` (all route definitions)
-
-### 7.2 Routes
-
-- **`routes/AppRoutes.tsx`** — Declares all routes. Public routes (`/login`, `/register`) are open. Protected routes are wrapped in `ProtectedRoute` + `DashboardLayout`. Role-specific routes add `RequireRole`.
-- **`routes/ProtectedRoute.tsx`** — Checks authentication. Redirects to `/login` if not authenticated.
-- **`routes/RequireRole.tsx`** — Checks the user's role. Redirects to the user's dashboard if unauthorized.
-- **`routes/DashboardRedirect.tsx`** — Redirects `/dashboard` to the role-specific dashboard.
-
-### 7.3 State Management (Redux)
-
-- **`store/index.ts`** — Configures the Redux store with slices: `auth`, `department`, `designation`, `employee`, `attendance`, `leave`, `payment`.
-- **`store/slices/authSlice.ts`** — Auth state: user, loading, initializing, error. Async thunks: `login`, `register`, `fetchMe`, `logoutUser`, `googleLogin`, `completeFirstLogin`.
-- **`store/slices/paymentSlice.ts`** — Payment state and thunks: `fetchPayments`, `createPayment`, `verifyPayment`, `cancelPayment`, `fetchMyPayments`, `fetchAmenities`.
-- **`store/middleware/authMiddleware.ts`** — Listens for auth events.
-
-### 7.4 API Communication
-
-- **`config/axios.ts`** — Configured Axios instance. Attaches the access token to every request. Automatically refreshes the token on 401 errors.
-- **`config/env.ts`** — Reads `VITE_*` environment variables.
-- **`services/api.ts`** — Generic `http` wrapper that unwraps the standard API response envelope.
-- **`services/payment.service.ts`** — Payment-specific API calls: `create`, `list`, `verify`, `cancel`, `getMyPayments`, `getAmenities`.
-- **`services/auth.service.ts`** — Auth-specific API calls: `login`, `register`, `googleLogin`, `logout`, `sendOtp`, `verifyOtp`, `setPassword`, `forgotPassword`, `resetPassword`.
-
-### 7.5 Hooks
-
-- **`hooks/useAuth.ts`** — Provides `user`, `isAuthenticated`, `login`, `logout`, `fetchMe`, etc.
-- **`hooks/usePayment.ts`** — Provides payment state and actions (`list`, `create`, `verify`, `cancel`, `loadAmenities`).
-- **`hooks/useEmployees.ts`**, **`useAttendance.ts`**, **`useLeaves.ts`**, etc. — Feature-specific hooks.
-
-### 7.6 Token Storage
-
-- **`utils/token.ts`** — `TokenUtil` reads/writes JWT tokens to `localStorage`. Keys: `emp_access_token`, `emp_refresh_token`.
-
----
-
-## 8. Database — MongoDB
-
-EmpSphere uses **MongoDB** as its primary data store. Django's SQLite is used only for internal Django tables (in-memory).
-
-### Connection
-
-- **`apps/common/database/mongo.py`** — `MongoConnection` singleton. Connects using `MONGO_URI` from `.env`. Database name from `DATABASE_NAME`.
-
-### Collections
-
-Defined in **`apps/common/core/collections.py`**:
-
-| Collection | Purpose |
-|-----------|---------|
-| `users` | Employee and admin accounts (all roles) |
-| `roles` | Role documents (SUPER_ADMIN, ADMIN, HR_MANAGER, EMPLOYEE) |
-| `permissions` | Permission documents |
-| `tokens` | Token-related data |
-| `otps` | One-time passwords for verification |
-| `departments` | Department records |
-| `designations` | Designation records |
-| `attendance` | Attendance records (check-in/check-out) |
-| `leaves` | Leave applications |
-| `payments` | Payment records |
-| `amenities` | Office amenity configurations (name, amount) |
-| `activity_logs` | Audit trail entries |
-
-### Key Principles
-
-- All repositories use the `mongo` singleton to access collections.
-- Collection names are centralized in `Collections` class — never hardcoded in repositories.
-- Documents use `is_deleted` for soft delete and `is_active` for status.
-- Timestamps: `created_at`, `updated_at`, `deleted_at`.
-
----
-
-## 9. Authentication
-
-EmpSphere uses **JWT (JSON Web Token)** authentication with access + refresh tokens.
-
-### Token Flow
-
-1. User logs in with email/password.
-2. Backend verifies credentials against MongoDB.
-3. Backend returns an **access token** (short-lived) and a **refresh token** (longer-lived).
-4. Frontend stores both tokens in `localStorage`.
-5. Every API request sends the access token in the `Authorization: Bearer <token>` header.
-6. When the access token expires, the frontend uses the refresh token to get a new one.
-7. The old refresh token is **blacklisted** (rotated) for security.
-
-### Authentication Files
+The `common` app holds shared utilities used by every other app:
 
 | File | Purpose |
 |------|---------|
-| `apps/authentication/views/auth_view.py` | Register, login, logout endpoints |
-| `apps/authentication/services/auth_service.py` | Authentication business logic |
-| `apps/authentication/serializers/auth_serializer.py` | Validates login/register input |
-| `apps/authentication/views/refresh_token_view.py` | Token refresh endpoint |
-| `apps/authentication/views/google_login_view.py` | Google OAuth login |
-| `apps/authentication/views/otp_view.py` | Send and verify OTP |
-| `apps/authentication/views/verify_email_view.py` | Email verification |
-| `apps/authentication/views/password_view.py` | Change/set/forgot/reset password |
-| `apps/authentication/services/otp_service.py` | OTP generation and verification |
-| `apps/authentication/services/password_service.py` | Password operations |
-| `apps/authentication/managers/token_blacklist_manager.py` | Blacklists refresh tokens |
-| `apps/authentication/managers/employee_code_manager.py` | Generates unique employee codes |
-| `apps/common/middleware/authentication.py` | `JWTAuthentication` — validates tokens on every request |
-| `apps/common/security/password_manager.py` | bcrypt password hashing and verification |
-| `apps/common/security/google_manager.py` | Google ID token verification |
-
-### Auth Features
-
-- **Register** — Creates an ADMIN account. Requires a `company_secret` from `.env`. Sends email verification OTP.
-- **Login** — Verifies email + password. If email is unverified, returns `requires_otp: true` instead of tokens.
-- **Email Verification** — OTP sent to email. Verified via `/verify-email/` or `/verify-otp/`.
-- **Google Login** — Authenticates with a Google ID token. Links to existing account by email.
-- **Refresh Token** — Rotates the refresh token and blacklists the old one.
-- **Logout** — Blacklists the refresh token and clears local auth state.
-- **Forgot Password** — Sends OTP, verifies it, returns a reset token, then resets the password.
-- **Change Password** — Authenticated user changes their own password.
-- **Set Password** — Google-authenticated user sets a local password (requires OTP).
-- **Profile** — View and update profile, upload profile image.
+| `apps/common/authentication.py` | `JWTAuthentication` DRF class |
+| `apps/common/permissions.py` | `require_role` decorator + `IsAuthenticatedUser` + `can_manage_user` |
+| `apps/common/database.py` | MongoDB connection (`mongo`, `get_collection`) |
+| `apps/common/settings.py` | Single `settings` object loaded from `.env` |
+| `apps/common/constants.py` | Collection names, OTP policy, password rules, roles |
+| `apps/common/utils.py` | Password hashing, employee code generation, user lookups |
+| `apps/common/responses.py` | `success()` and `error()` response helpers |
+| `apps/common/exception_middleware.py` | Safety net for unhandled exceptions |
+| `apps/common/request_logger.py` | Logs each request with method, path, status, duration |
 
 ---
 
-## 10. Authorization / RBAC
+## 5. Frontend Architecture
 
-### Roles
+```
+User action
+   ↓
+React component
+   ↓ (calls a hook or directly calls a service)
+Hook (e.g. useAuth, useResource)         ← optional, for stateful features
+   ↓
+Service (e.g. employee.service.ts)
+   ↓
+http wrapper (unwraps {success, message, data})
+   ↓
+Axios instance (with JWT interceptor)
+   ↓
+Backend API
+   ↓
+Response flows back: update state, re-render
+```
 
-Defined in **`apps/common/core/roles.py`**:
+- **Axios instance** — one instance in `src/config/axios.ts` with:
+  - `baseURL` from `VITE_API_BASE_URL`
+  - attaches the access token to every non-public request
+  - on 401, tries to refresh the token once and retries the original request
+- **http wrapper** — `src/services/api.ts` unwraps the backend's `{success, message, data}` envelope automatically via `unwrap()`.
+- **Services** — one file per feature (`auth.service.ts`, `employee.service.ts`, etc.) using the `http` wrapper.
+- **Hooks** — `useAuth` (Redux auth state), `useResource` (list/update pattern), `useDashboardData` (stats + activities).
+- **Redux** — only for the **auth** slice. Everything else is component-local state.
+- **Routing** — `AppRoutes` declares public + protected routes. `ProtectedRoute` redirects unauthenticated users to `/login`. `RequireRole` redirects users without the right role to their own dashboard.
+
+---
+
+## 6. How a Request Travels Through the System
+
+```text
+User clicks "Create Employee"
+       ↓
+EmployeesPage (React component)
+       ↓
+employeeService.create(payload)           ← calls http.post()
+       ↓
+http.post() unwraps the response envelope ← services/api.ts
+       ↓
+Axios interceptor attaches JWT             ← config/axios.ts
+       ↓
+POST /api/employees/                      ← Authorization: Bearer <token>
+       ↓
+config/urls.py → apps/employees/urls.py
+       ↓
+EmployeeView.post()                       ← apps/employees/views.py
+       ↓ @require_role checks JWT role
+       ↓ EmployeeSerializer validates input
+       ↓
+EmployeeService.create_employee(data)     ← apps/employees/services.py
+       ↓ hash_password(), generate_employee_code()
+       ↓ log_activity()
+       ↓
+get_collection("users").insert_one(...)
+       ↓
+MongoDB
+       ↓
+Response: { success, message, data: { user_id } }
+       ↓
+Frontend unwraps data, updates UI
+```
+
+---
+
+## 7. Authentication
+
+### Token types
+
+- **Access token** — short-lived (default 30 minutes), sent on every protected API call.
+- **Refresh token** — longer-lived (default 7 days), used only to mint a new access token when the current one expires.
+
+Both are signed with `JWT_SECRET` from `.env`.
+
+### Flow: Login
+
+```text
+POST /api/auth/login/   { email, password }
+   ↓
+AuthService.login()
+   ↓ check user by email
+   ↓ verify password (bcrypt via passlib)
+   ↓
+   ↓ if email not verified → return { requires_otp: true, email }
+   ↓ else                  → create access + refresh tokens, return both
+```
+
+### Flow: Register
+
+```text
+POST /api/auth/register/   { first_name, last_name, email, password, company_secret }
+   ↓
+AuthService.register()
+   ↓ validate company_secret
+   ↓ hash password, generate employee code
+   ↓ create user with role = "ADMIN"
+   ↓ send email verification OTP
+   ↓
+MongoDB "users" collection
+```
+
+### Flow: Email verification (first login OTP)
+
+```text
+POST /api/auth/verify-otp/   { email, otp, purpose: "email_verification" }
+   ↓
+AuthService.verify_first_login()
+   ↓ verify OTP
+   ↓ mark user is_email_verified = true
+   ↓ issue access + refresh tokens
+```
+
+### Flow: Forgot password
+
+```text
+POST /api/auth/forgot-password/   { email }
+   ↓
+PasswordService.request_password_reset()
+   ↓ send forgot_password OTP
+   ↓
+POST /api/auth/verify-otp/   { email, otp, purpose: "forgot_password" }
+   ↓
+PasswordService.verify_password_reset_otp()
+   ↓ verify OTP
+   ↓ return single-use reset_token
+   ↓
+POST /api/auth/reset-password/   { reset_token, password }
+   ↓
+PasswordService.reset_password()
+   ↓ verify reset_token
+   ↓ hash new password, invalidate token
+   ↓ blacklist all user sessions
+```
+
+### Flow: Change password
+
+```text
+POST /api/auth/change-password/   { current_password, new_password }
+   ↓
+PasswordService.change_password()
+   ↓ verify current password
+   ↓ hash new password
+```
+
+### Flow: Set password (Google users)
+
+```text
+POST /api/auth/set-password/   { email, otp, new_password }
+   ↓
+OTPService.verify_otp() + PasswordService.set_password()
+```
+
+### Flow: Google login
+
+```text
+POST /api/auth/google-login/   { id_token }
+   ↓
+AuthService.google_login()
+   ↓ verify Google ID token
+   ↓ find or link user by google_id / email
+   ↓ issue tokens
+```
+
+### Flow: Logout
+
+```text
+POST /api/auth/logout/   { refresh_token }
+   ↓
+blacklist_token(refresh_token)
+   ↓ store in MongoDB "tokens" collection
+   ↓ audit log
+```
+
+### Files
+
+| File | Purpose |
+|------|---------|
+| `apps/authentication/views.py` | All auth views (Register, Login, Logout, Refresh, Profile, OTP, Password, Google) |
+| `apps/authentication/services.py` | AuthService, OTPService, PasswordService, UserService, ProfileImageService + token helpers |
+| `apps/authentication/serializers.py` | All auth serializers |
+| `apps/authentication/urls.py` | Auth URL routes |
+| `apps/common/authentication.py` | `JWTAuthentication` DRF class |
+| `apps/common/utils.py` | `hash_password`, `verify_password`, `generate_employee_code` |
+
+---
+
+## 8. JWT Authentication
+
+### Token creation
+
+Tokens are created in `apps/authentication/services.py`:
+
+- `_generate_access_token(user)` — contains `user_id`, `email`, `role`, `token_type: "access"`.
+- `_generate_refresh_token(user)` — same fields plus `token_type: "refresh"` and a unique `jti`.
+
+### Token validation
+
+`apps/common/authentication.py` — `JWTAuthentication.authenticate()`:
+
+1. Read `Authorization: Bearer <token>` from the request.
+2. Decode and validate the JWT (signature + expiry).
+3. Check `token_type == "access"`.
+4. Load the user from MongoDB by `user_id`.
+5. Attach `(user_document, token)` to `request.user`.
+
+### Token refresh
+
+`apps/authentication/services.py` — `AuthService.refresh_access_token()`:
+
+1. Check the refresh token is not blacklisted.
+2. Decode and validate it.
+3. Blacklist the old refresh token (rotation).
+4. Issue new access + refresh tokens.
+
+### Token blacklist
+
+`apps/authentication/services.py`:
+
+- `blacklist_token(refresh_token)` — stores the token in MongoDB `tokens` collection.
+- `is_token_blacklisted(refresh_token)` — checks if token is blacklisted.
+
+### Flow: Protected request
+
+```text
+GET /api/employees/  Authorization: Bearer <access_token>
+   ↓
+JWTAuthentication (apps/common/authentication.py)
+   ↓ decode token, check token_type == "access"
+   ↓ load user from MongoDB by user_id
+   ↓ set request.user = user document
+   ↓
+@require_role checks role
+   ↓
+View runs
+```
+
+### Flow: Token refresh (in the Axios interceptor)
+
+```text
+Request → 401 Unauthorized
+   ↓
+Axios response interceptor (config/axios.ts)
+   ↓ POST /auth/refresh-token/ with { refresh_token }
+   ↓
+   ↓ on success: save new tokens, retry the original request once
+   ↓ on failure: clear tokens, dispatch auth:expired → redirect to /login
+```
+
+---
+
+## 9. Authorization and Roles
+
+Four roles:
 
 | Role | Level | Description |
 |------|-------|-------------|
-| `SUPER_ADMIN` | 4 (highest) | Full system access |
-| `ADMIN` | 3 | Manages HR managers and employees |
-| `HR_MANAGER` | 2 | Manages employees |
-| `EMPLOYEE` | 1 (lowest) | Can manage own data only |
+| `SUPER_ADMIN` | 4 | Full system access |
+| `ADMIN` | 3 | Manage HR managers and employees |
+| `HR_MANAGER` | 2 | Manage employees |
+| `EMPLOYEE` | 1 | Own data only |
 
-### Key Concepts
+### Two ideas kept separate
 
-- **Authentication** = Who are you? (JWT token identifies the user)
-- **Authorization** = What are you allowed to do? (Role determines permissions)
+- **Authentication** — who is the user? (JWT in `Authorization: Bearer …`)
+- **Authorization** — what can they do? (role check on the view)
 
-### Backend Enforcement
+### Role hierarchy
 
-- **`@require_role(Role.ADMIN, Role.SUPER_ADMIN)`** decorator on controller methods. Returns 403 if the user's role is not in the allowed list.
-- **`RolePermission.has_privilege(user_role, required_role)`** — Checks if a role is at least as privileged as required (hierarchy-based).
-- **`RolePermission.can_manage_user(actor, target)`** — Checks if the actor can manage a user with the target role. SUPER_ADMIN manages everyone; ADMIN manages HR + Employee; HR manages Employee only.
-- **Resource ownership** — Employees can only access their own records (checked in controllers and services).
+`apps/common/permissions.py` — `MANAGEABLE_ROLES`:
 
-### Frontend Enforcement
+```python
+MANAGEABLE_ROLES = {
+    "SUPER_ADMIN": {"SUPER_ADMIN", "ADMIN", "HR_MANAGER", "EMPLOYEE"},
+    "ADMIN": {"HR_MANAGER", "EMPLOYEE"},
+    "HR_MANAGER": {"EMPLOYEE"},
+    "EMPLOYEE": set(),
+}
+```
 
-- **`ProtectedRoute`** — Redirects unauthenticated users to `/login`.
-- **`RequireRole`** — Redirects unauthorized users to their own dashboard.
-- **`EMPLOYEE_MANAGEMENT_ROLES`** constant in `utils/constants.ts` — Single source of truth for which roles can manage employees.
+`can_manage_user(actor_role, target_role)` returns True if the actor may manage a target with that role. Used in employee update/delete logic.
 
-### Capability Table (from actual source code)
+### Resource ownership
 
-| Action | SUPER_ADMIN | ADMIN | HR_MANAGER | EMPLOYEE |
-|--------|:-----------:|:-----:|:----------:|:--------:|
-| Manage users (create/read/update) | ✅ | ✅ | ❌ | ❌ |
-| Delete users | ✅ | ❌ | ❌ | ❌ |
-| Manage roles | ✅ | ❌ | ❌ | ❌ |
-| Manage departments | ✅ | ✅ | ❌ | ❌ |
-| Read departments | ✅ | ✅ | ✅ | ❌ |
-| Manage designations | ✅ | ✅ | ❌ | ❌ |
-| Manage employees | ✅ | ✅ | ✅ | ❌ |
-| Read employees | ✅ | ✅ | ✅ | ❌ |
-| Mark attendance | ✅ | ✅ | ✅ | ✅ |
-| Update attendance | ✅ | ✅ | ✅ | ❌ |
-| Read attendance | ✅ | ✅ | ✅ | ✅ (own only) |
-| Apply for leave | ✅ | ✅ | ✅ | ✅ |
-| Approve/reject leave | ✅ | ✅ | ✅ | ❌ |
-| Read leaves | ✅ | ✅ | ✅ | ✅ (own only) |
-| Create payment | ✅ | ✅ | ✅ | ✅ |
-| Read payments | ✅ | ✅ | ✅ | ✅ (own only) |
-| Verify payments | ✅ | ✅ | ❌ | ❌ |
-| View reports | ✅ | ✅ | ✅ | ❌ |
-| Export reports | ✅ | ✅ | ❌ | ❌ |
-| View activity logs | ✅ | ✅ | ✅ | ✅ (own only) |
+Some endpoints need an extra check: an EMPLOYEE can only see their **own** record. Views handle this directly:
+
+```python
+record = self.service.get_leave(leave_id)
+if request.user.get("role") == "EMPLOYEE" and str(record.get("employee_id")) != str(request.user["_id"]):
+    return error("You do not have permission to view this leave.", status.HTTP_403_FORBIDDEN)
+```
+
+---
+
+## 10. Permission Decorator
+
+`apps/common/permissions.py` — `require_role(*allowed_roles)`:
+
+```python
+@require_role("SUPER_ADMIN", "ADMIN", "HR_MANAGER")
+def post(self, request):
+    # Only SUPER_ADMIN, ADMIN, HR_MANAGER can call this
+    ...
+```
+
+### How it works
+
+1. The decorator receives the allowed roles: `@require_role("SUPER_ADMIN", "ADMIN", "HR_MANAGER")`.
+2. It returns a `decorator(view_func)` that wraps the view method.
+3. The `wrapper(view, request, *args, **kwargs)` runs when the endpoint is called.
+4. It gets `request.user` (set by `JWTAuthentication`).
+5. It reads `user.get("role")`.
+6. If the role is not in the allowed list, it raises `PermissionDenied` (HTTP 403).
+7. If the role is allowed, it calls the original view method.
+
+### Default permission
+
+`apps/common/permissions.py` — `IsAuthenticatedUser` is the default permission class in DRF settings. It checks that `request.user` exists and has an `_id`.
 
 ---
 
@@ -463,420 +524,828 @@ Defined in **`apps/common/core/roles.py`**:
 
 ### Purpose
 
-Manages employee records — create, read, update, status changes, and delete.
+Create, list, update, and delete employees. Only SUPER_ADMIN, ADMIN, and HR_MANAGER can manage employees.
 
-### Flow
+### Important files
 
-```
-Frontend: EmployeesPage → useEmployees hook → employeeService → Axios
-    ↓
-Backend: /api/employees/ → EmployeeController → EmployeeService → EmployeeRepository → MongoDB "users"
-```
-
-### Files
-
-| Layer | File |
-|-------|------|
-| Controller | `apps/employee/controllers/employee_controller.py` |
-| Service | `apps/employee/services/employee_service.py` |
-| Repository | `apps/employee/repositories/employee_repository.py` |
-| Serializer | `apps/employee/serializers/employee_serializer.py` |
-| Validator | `apps/employee/validators/employee_validator.py` |
-| DTO | `apps/employee/dtos/employee_dto.py` |
+| Purpose | File |
+|---------|------|
+| View | `apps/employees/views.py` |
+| Serializer | `apps/employees/serializers.py` |
+| Service | `apps/employees/services.py` |
+| URL | `apps/employees/urls.py` |
 | Frontend page | `frontend/src/pages/employees/EmployeesPage.tsx` |
 | Frontend service | `frontend/src/services/employee.service.ts` |
-| Frontend hook | `frontend/src/hooks/useEmployees.ts` |
 
-### Business Rules
+### Backend flow
 
-- Only `SUPER_ADMIN`, `ADMIN`, and `HR_MANAGER` can access employee management.
-- Employees read their own record through the **Profile** endpoint, not Employee Management.
-- Delete is `SUPER_ADMIN`-only.
-- Employee status can be `ACTIVE` or `INACTIVE`.
-- Each employee has a unique `employee_code` (auto-generated).
+```text
+POST /api/employees/
+   ↓
+EmployeeView.post()                               apps/employees/views.py
+   ↓ @require_role(SUPER_ADMIN, ADMIN, HR_MANAGER)
+   ↓ EmployeeSerializer validates
+   ↓
+EmployeeService.create_employee(data)             apps/employees/services.py
+   ↓ validate first_name, last_name, email, password, role, phone, status
+   ↓ hash_password(), generate_employee_code()
+   ↓ insert into MongoDB "users"
+   ↓ log_activity("EMPLOYEE", "CREATE_EMPLOYEE", ...)
+   ↓
+Response: { user_id: "<new ObjectId>" }
+```
+
+### Business rules
+
+- Email must be unique (case-insensitive).
+- Password must be at least 8 characters.
+- Role must be one of: SUPER_ADMIN, ADMIN, HR_MANAGER, EMPLOYEE.
+- Status must be one of: ACTIVE, INACTIVE.
+- Only SUPER_ADMIN can delete employees (soft delete via `is_deleted: True`).
+- Update respects `can_manage_user` — an HR_MANAGER cannot edit an ADMIN.
+
+### API endpoints
+
+| Method | URL | Role | Description |
+|--------|-----|------|-------------|
+| POST | `/api/employees/` | SUPER_ADMIN, ADMIN, HR_MANAGER | Create employee |
+| GET | `/api/employees/` | SUPER_ADMIN, ADMIN, HR_MANAGER | List employees (with filters + pagination) |
+| GET | `/api/employees/<id>/` | SUPER_ADMIN, ADMIN, HR_MANAGER | Get single employee |
+| PUT | `/api/employees/<id>/` | SUPER_ADMIN, ADMIN, HR_MANAGER | Update employee |
+| PATCH | `/api/employees/<id>/` | SUPER_ADMIN, ADMIN, HR_MANAGER | Update employee status |
+| DELETE | `/api/employees/<id>/` | SUPER_ADMIN | Delete employee (soft delete) |
 
 ---
 
-## 12. Organization — Departments & Designations
+## 12. Employee Creation — Complete Flow
 
-### Purpose
-
-Manages the organizational structure: departments (e.g., Engineering, HR) and designations (e.g., Software Engineer, Manager).
-
-### Files
-
-| Layer | Department | Designation |
-|-------|-----------|-------------|
-| Controller | `organization/controllers/department_controller.py` | `organization/controllers/designation_controller.py` |
-| Service | `organization/services/department_service.py` | `organization/services/designation_service.py` |
-| Repository | `organization/repositories/department_repository.py` | `organization/repositories/designation_repository.py` |
-| Serializer | `organization/serializers/department_serializer.py` | `organization/serializers/designation_serializer.py` |
-
-### Business Rules
-
-- Only `SUPER_ADMIN`, `ADMIN`, and `HR_MANAGER` can manage departments/designations.
-- Departments and designations can be soft-deleted.
-- Employees reference departments and designations by ID.
+```text
+Frontend employee form (EmployeesPage)
+   ↓
+employeeService.create(payload)                   frontend/src/services/employee.service.ts
+   ↓ http.post("/employees/", payload)             frontend/src/services/api.ts
+   ↓ Axios attaches JWT                            frontend/src/config/axios.ts
+   ↓
+POST /api/employees/
+   ↓
+config/urls.py → apps/employees/urls.py
+   ↓
+EmployeeView.post()                               apps/employees/views.py
+   ↓ @require_role(SUPER_ADMIN, ADMIN, HR_MANAGER)
+   ↓ EmployeeSerializer.is_valid(raise_exception=True)
+   ↓
+EmployeeService.create_employee(data)             apps/employees/services.py
+   ↓ validate first_name, last_name, email, password, role, phone, status
+   ↓ check email uniqueness
+   ↓ hash_password(password)
+   ↓ generate_employee_code()                      apps/common/utils.py
+   ↓
+get_collection("users").insert_one(document)
+   ↓
+MongoDB "users" collection
+   ↓
+log_activity("EMPLOYEE", "CREATE_EMPLOYEE", ...) apps/activity_logs/services.py
+   ↓
+Response: { success, message, data: { user_id } }
+   ↓
+Frontend unwraps data, updates UI
+```
 
 ---
 
-## 13. Attendance
+## 13. Departments
 
 ### Purpose
 
-Tracks employee attendance — check-in, check-out, and manual marking.
+Manage company departments. Separated into its own app.
 
-### Flow
+### Important files
 
+| Purpose | File |
+|---------|------|
+| View | `apps/departments/views.py` |
+| Serializer | `apps/departments/serializers.py` |
+| Service | `apps/departments/services.py` |
+| URL | `apps/departments/urls.py` |
+| Frontend page | `frontend/src/pages/departments/DepartmentsPage.tsx` |
+| Frontend service | `frontend/src/services/department.service.ts` |
+
+### Backend flow
+
+```text
+POST /api/departments/
+   ↓
+DepartmentView.post()                             apps/departments/views.py
+   ↓ @require_role(SUPER_ADMIN, ADMIN, HR_MANAGER)
+   ↓ DepartmentSerializer validates
+   ↓
+DepartmentService.create_department(data)         apps/departments/services.py
+   ↓ validate name, code (both unique)
+   ↓ insert into MongoDB "departments"
+   ↓ log_activity("DEPARTMENT", "CREATE_DEPARTMENT", ...)
 ```
-Frontend: AttendancePage → useAttendance hook → attendanceService → Axios
-    ↓
-Backend: /api/attendance/ → AttendanceController → AttendanceService → AttendanceRepository → MongoDB "attendance"
+
+### Business rules
+
+- Name must be unique (case-insensitive).
+- Code must be unique (case-insensitive).
+- Soft delete: `is_active = False` (cannot delete if employees are assigned).
+- Unique indexes on `name` and `code`.
+
+### API endpoints
+
+| Method | URL | Role | Description |
+|--------|-----|------|-------------|
+| POST | `/api/departments/` | SUPER_ADMIN, ADMIN, HR_MANAGER | Create department |
+| GET | `/api/departments/` | SUPER_ADMIN, ADMIN, HR_MANAGER | List departments |
+| GET | `/api/departments/<id>/` | SUPER_ADMIN, ADMIN, HR_MANAGER | Get single department |
+| PUT | `/api/departments/<id>/` | SUPER_ADMIN, ADMIN, HR_MANAGER | Update department |
+| DELETE | `/api/departments/<id>/` | SUPER_ADMIN, ADMIN, HR_MANAGER | Soft delete department |
+
+---
+
+## 14. Designations
+
+### Purpose
+
+Manage employee designations (job titles). Separated into its own app.
+
+### Important files
+
+| Purpose | File |
+|---------|------|
+| View | `apps/designations/views.py` |
+| Serializer | `apps/designations/serializers.py` |
+| Service | `apps/designations/services.py` |
+| URL | `apps/designations/urls.py` |
+| Frontend page | `frontend/src/pages/designations/DesignationsPage.tsx` |
+| Frontend service | `frontend/src/services/designation.service.ts` |
+
+### Backend flow
+
+```text
+POST /api/designations/
+   ↓
+DesignationView.post()                            apps/designations/views.py
+   ↓ @require_role(SUPER_ADMIN, ADMIN, HR_MANAGER)
+   ↓ DesignationSerializer validates
+   ↓
+DesignationService.create_designation(data)       apps/designations/services.py
+   ↓ validate name (unique), code (unique, optional)
+   ↓ insert into MongoDB "designations"
+   ↓ log_activity("DESIGNATION", "CREATE_DESIGNATION", ...)
 ```
 
-### Files
+### Business rules
 
-| Layer | File |
-|-------|------|
-| Controller | `apps/attendance/controllers/attendance_controller.py` |
-| Service | `apps/attendance/services/attendance_service.py` |
-| Repository | `apps/attendance/repositories/attendance_repository.py` |
-| Serializer | `apps/attendance/serializers/attendance_serializer.py` |
-| Validator | `apps/attendance/validators/attendance_validator.py` |
+- Name must be unique (case-insensitive).
+- Code is optional, but if provided must be unique.
+- Code is stored uppercase.
+- Unique indexes on `name` and `code`.
+
+### API endpoints
+
+| Method | URL | Role | Description |
+|--------|-----|------|-------------|
+| POST | `/api/designations/` | SUPER_ADMIN, ADMIN, HR_MANAGER | Create designation |
+| GET | `/api/designations/` | SUPER_ADMIN, ADMIN, HR_MANAGER | List designations |
+| GET | `/api/designations/<id>/` | SUPER_ADMIN, ADMIN, HR_MANAGER | Get single designation |
+| PUT | `/api/designations/<id>/` | SUPER_ADMIN, ADMIN, HR_MANAGER | Update designation |
+
+---
+
+## 15. Attendance
+
+### Purpose
+
+Track employee attendance: manual marking, check-in, check-out, and summaries.
+
+### Important files
+
+| Purpose | File |
+|---------|------|
+| View | `apps/attendance/views.py` |
+| Serializer | `apps/attendance/serializers.py` |
+| Service | `apps/attendance/services.py` |
+| URL | `apps/attendance/urls.py` |
 | Frontend page | `frontend/src/pages/attendance/AttendancePage.tsx` |
 | Frontend service | `frontend/src/services/attendance.service.ts` |
-| Frontend hook | `frontend/src/hooks/useAttendance.ts` |
 
-### Business Rules
+### Backend flow
 
-- All roles can mark/check-in/check-out.
-- Employees can only view their own attendance.
-- Managers can view and update any employee's attendance.
-- The controller has `AttendanceController` (CRUD) and `AttendanceSummaryController` (summary stats).
+```text
+POST /api/attendance/actions/check-in/
+   ↓
+AttendanceView.post()                             apps/attendance/views.py
+   ↓ @require_role(EMPLOYEE, HR_MANAGER, ADMIN, SUPER_ADMIN)
+   ↓
+AttendanceService.check_in(employee_id)           apps/attendance/services.py
+   ↓ verify employee is active
+   ↓ if no record for today → create with check_in = now
+   ↓ if record exists without check_in → update check_in
+   ↓ if already checked in → error
+   ↓ log_activity("ATTENDANCE", "CHECK_IN", ...)
+   ↓
+MongoDB "attendance" collection
+```
+
+### Business rules
+
+- One record per employee per day (unique index on `employee_id` + `date`).
+- EMPLOYEE can only mark their own attendance.
+- Check-out must follow a check-in.
+- Valid statuses: PRESENT, ABSENT, HALF_DAY, LEAVE.
+- Only HR_MANAGER, ADMIN, SUPER_ADMIN can update attendance records.
+
+### API endpoints
+
+| Method | URL | Role | Description |
+|--------|-----|------|-------------|
+| POST | `/api/attendance/` | EMPLOYEE, HR_MANAGER, ADMIN, SUPER_ADMIN | Mark attendance |
+| POST | `/api/attendance/actions/check-in/` | EMPLOYEE, HR_MANAGER, ADMIN, SUPER_ADMIN | Check-in |
+| POST | `/api/attendance/actions/check-out/` | EMPLOYEE, HR_MANAGER, ADMIN, SUPER_ADMIN | Check-out |
+| GET | `/api/attendance/` | EMPLOYEE, HR_MANAGER, ADMIN, SUPER_ADMIN | List attendance (EMPLOYEE sees own only) |
+| GET | `/api/attendance/<id>/` | EMPLOYEE, HR_MANAGER, ADMIN, SUPER_ADMIN | Get single record |
+| PUT | `/api/attendance/<id>/` | HR_MANAGER, ADMIN, SUPER_ADMIN | Update attendance |
+| GET | `/api/attendance/summary/<employee_id>/` | EMPLOYEE, HR_MANAGER, ADMIN, SUPER_ADMIN | Get summary |
 
 ---
 
-## 14. Leave Management
+## 16. Leave Management
 
 ### Purpose
 
-Handles leave applications — employees apply, managers approve or reject.
+Apply for leave, view leaves, and approve/reject leaves.
 
-### Flow
+### Important files
 
-```
-Frontend: LeavesPage → useLeaves hook → leaveService → Axios
-    ↓
-Backend: /api/leaves/ → LeaveController → LeaveService → LeaveRepository → MongoDB "leaves"
-```
-
-### Files
-
-| Layer | File |
-|-------|------|
-| Controller | `apps/leave/controllers/leave_controller.py` |
-| Service | `apps/leave/services/leave_service.py` |
-| Repository | `apps/leave/repositories/leave_repository.py` |
-| Serializer | `apps/leave/serializers/leave_serializer.py` |
-| Validator | `apps/leave/validators/leave_validator.py` |
+| Purpose | File |
+|---------|------|
+| View | `apps/leaves/views.py` |
+| Serializer | `apps/leaves/serializers.py` |
+| Service | `apps/leaves/services.py` |
+| URL | `apps/leaves/urls.py` |
 | Frontend page | `frontend/src/pages/leaves/LeavesPage.tsx` |
-| Frontend service | `frontend/src/services/leave.service.ts` |
-| Frontend hook | `frontend/src/hooks/useLeaves.ts` |
+| Frontend service | `apps/leaves/services.py` |
 
-### Business Rules
+### Apply for leave
 
-- All roles can apply for leave.
-- Employees can only view their own leaves.
-- Only `HR_MANAGER`, `ADMIN`, and `SUPER_ADMIN` can approve or reject leaves.
-- A user cannot approve/reject their own leave (enforced in the service layer).
-- Leave records are **never deleted** — they are historical business data.
+```text
+POST /api/leaves/   { start_date, end_date, leave_type, reason }
+   ↓
+LeaveView.post()                                  apps/leaves/views.py
+   ↓ @require_role(EMPLOYEE, HR_MANAGER, ADMIN, SUPER_ADMIN)
+   ↓ if EMPLOYEE → force employee_id = current user
+   ↓ LeaveSerializer validates
+   ↓
+LeaveService.apply_leave(data)                    apps/leaves/services.py
+   ↓ check start_date <= end_date
+   ↓ verify leave_type is valid
+   ↓ verify employee is active
+   ↓ insert leave with status = PENDING
+   ↓ log_activity("LEAVE", "APPLY_LEAVE", ...)
+   ↓
+MongoDB "leaves" collection
+```
+
+### Approve / reject leave
+
+```text
+PUT /api/leaves/<leave_id>/   { status: "APPROVED" | "REJECTED" }
+   ↓
+LeaveView.put()                                   apps/leaves/views.py
+   ↓ @require_role(HR_MANAGER, ADMIN, SUPER_ADMIN)
+   ↓
+LeaveService.update_leave_status(leave_id, status, user_id)
+   ↓ only PENDING leaves can change
+   ↓ you cannot approve/reject your own leave
+   ↓ set approved_by or rejected_by
+   ↓ log_activity("LEAVE", "APPROVE_LEAVE" | "REJECT_LEAVE", ...)
+```
+
+### Business rules
+
+- Valid leave types: ANNUAL, SICK, CASUAL, UNPAID.
+- Valid statuses: PENDING, APPROVED, REJECTED.
+- EMPLOYEE can only apply for their own leaves.
+- EMPLOYEE can only view their own leaves.
+- Only PENDING leaves can be updated.
+- You cannot approve/reject your own leave.
+- Leave records are never deleted (historical data).
+
+### API endpoints
+
+| Method | URL | Role | Description |
+|--------|-----|------|-------------|
+| POST | `/api/leaves/` | EMPLOYEE, HR_MANAGER, ADMIN, SUPER_ADMIN | Apply for leave |
+| GET | `/api/leaves/` | EMPLOYEE, HR_MANAGER, ADMIN, SUPER_ADMIN | List leaves |
+| GET | `/api/leaves/<id>/` | EMPLOYEE, HR_MANAGER, ADMIN, SUPER_ADMIN | Get single leave |
+| PUT | `/api/leaves/<id>/` | HR_MANAGER, ADMIN, SUPER_ADMIN | Approve/reject leave |
 
 ---
 
-## 15. Payment System — Cashfree Sandbox
+## 17. Profile and Image Upload
 
-### IMPORTANT
+### Purpose
 
-EmpSphere uses **Cashfree** for payments. The system runs in **SANDBOX** mode by default. Sandbox transactions do **NOT** move real money. They are for development and testing only.
+View and update the current user's profile, including profile image.
 
-### Payment Flow
+### Important files
 
-```
-User opens Payments page
-    ↓
-Clicks "Make Payment"
-    ↓
-Selects "Myself" or "Select Employee"
-    ↓  (SUPER_ADMIN must select an employee; others pay for themselves by default)
-Selects an Amenity
-    ↓
-Backend supplies the amount (from amenity config, NOT from frontend)
-    ↓
-Backend creates a Cashfree Sandbox order
-    ↓
-Returns payment_session_id to frontend
-    ↓
-Frontend opens Cashfree Checkout (sandbox.cashfree.com)
-    ↓
-User completes test payment (UPI / Card / Netbanking)
-    ↓
-Cashfree redirects to backend callback URL
-    ↓
-Cashfree sends webhook to backend
-    ↓
-Backend verifies and updates payment status
-    ↓
-Payment status stored in MongoDB
-    ↓
-User sees updated payment history
+| Purpose | File |
+|---------|------|
+| View | `apps/authentication/views.py` (UserView, ProfileImageView, serve_profile_image) |
+| Service | `apps/authentication/services.py` (UserService, ProfileImageService) |
+| Serializer | `apps/authentication/serializers.py` (UserSerializer) |
+| Frontend service | `frontend/src/services/user.service.ts` |
+
+### Profile flow
+
+```text
+GET /api/auth/me/
+   ↓
+UserView.get()                                    apps/authentication/views.py
+   ↓
+UserService.get_by_id(user_id)                    apps/authentication/services.py
+   ↓
+Response: UserSerializer(user).data
 ```
 
-### Amenities
-
-Amenities are office items/services that employees can pay for (e.g., ID card, T-shirt, training material). Each amenity has a **name** and an **amount**.
-
-- Amenities are configured on the **backend** (via admin panel or seed command).
-- The **frontend must never determine the payment amount**. The amount always comes from the backend amenity configuration.
-- Seed command: `python manage.py seed_amenities` creates test amenities with small amounts (₹5–₹20).
-
-### Roles and Payments
-
-| Role | Can pay for | Can view |
-|------|------------|----------|
-| EMPLOYEE | Themselves only | Own payments only |
-| HR_MANAGER | Themselves or select employee | All payments |
-| ADMIN | Themselves or select employee | All payments |
-| SUPER_ADMIN | Must select an employee | All payments |
-
-### Security
-
-- `CASHFREE_SECRET_KEY` is **backend-only**. It never appears in frontend code, README, or logs.
-- The payment amount comes from the backend amenity configuration — the frontend cannot manipulate it.
-- Payment verification exists: the backend checks the actual Cashfree payment status before marking a payment as PAID.
-- Webhook handling exists: Cashfree sends payment events to `/api/payment/webhook/` with signature verification.
-- Duplicate/idempotency protection: if a pending payment already exists for the same employee + amenity, the existing one is reused.
-
-### Cashfree Sandbox Configuration
-
-Configured in `backend/.env`:
-
-```
-CASHFREE_APP_ID=YOUR_VALUE_HERE
-CASHFREE_SECRET_KEY=YOUR_VALUE_HERE
-CASHFREE_ENVIRONMENT=SANDBOX
-CASHFREE_API_VERSION=2025-01-01
+```text
+PATCH /api/auth/profile/   { first_name, last_name, phone }
+   ↓
+UserView.patch()                                  apps/authentication/views.py
+   ↓
+UserService.update(user_id, updates)              apps/authentication/services.py
+   ↓ log_activity("AUTHENTICATION", "PROFILE_UPDATE", ...)
 ```
 
-- `CASHFREE_ENVIRONMENT=SANDBOX` uses `https://sandbox.cashfree.com/pg`
-- `CASHFREE_ENVIRONMENT=PRODUCTION` uses `https://api.cashfree.com/pg`
+### Image upload flow
 
-### Files
+```text
+Frontend: <input type="file" />  → FormData
+   ↓
+POST /api/auth/profile/image/   (multipart/form-data, Authorization: Bearer <token>)
+   ↓
+ProfileImageView.post()                           apps/authentication/views.py
+   ↓
+ProfileImageService.upload(user_id, file)         apps/authentication/services.py
+   ↓ validate content type (jpeg/png/webp/gif) and size (≤ 5 MB)
+   ↓ delete old GridFS file (if any)
+   ↓ store new file in GridFS
+   ↓ save the file id in users.profile_image_id
+   ↓ log_activity("AUTHENTICATION", "PROFILE_IMAGE_UPDATE", ...)
+   ↓
+GET /api/auth/profile/image/<user_id>/   (public, no auth)
+   ↓
+serve_profile_image()                             apps/authentication/views.py
+   ↓ read GridFS file and stream it back as an HTTP response
+```
 
-| Layer | File |
-|-------|------|
-| Gateway | `apps/payment/gateways/cashfree_gateway.py` |
-| Controller | `apps/payment/controllers/payment_controller.py` |
-| Webhook controller | `apps/payment/controllers/webhook_controller.py` |
-| Callback controller | `apps/payment/controllers/callback_controller.py` |
-| Service | `apps/payment/services/payment_service.py` |
-| Repository | `apps/payment/repositories/payment_repository.py` |
-| Serializer | `apps/payment/serializers/payment_serializer.py` |
-| Validator | `apps/payment/validators/payment_validator.py` |
-| Amenity controller | `apps/payment/amenities/amenity_controller.py` |
-| Amenity service | `apps/payment/amenities/amenity_service.py` |
-| Amenity repository | `apps/payment/amenities/amenity_repository.py` |
+The serve endpoint is public so `<img src="...">` tags can load avatars without attaching JWT headers.
+
+---
+
+## 18. Payment System
+
+### Purpose
+
+Office amenity payments via **Razorpay (Test Mode)**. Razorpay is the **only**
+payment gateway in EmpSphere — there is no gateway selector, no fallback, and
+no multi-gateway abstraction. The backend is the source of truth for amounts
+and payment status; the frontend only opens Razorpay Checkout.
+
+> Test Mode is configured by default. Live deployment is **not** claimed
+> until valid live Razorpay keys are wired in and a production environment is
+> set up.
+
+### Important files
+
+| Purpose | File |
+|---------|------|
+| View | `apps/payments/views.py` |
+| Serializer | `apps/payments/serializers.py` |
+| Service | `apps/payments/services.py` |
+| Gateway | `apps/payments/gateways.py` |
+| URL | `apps/payments/urls.py` |
 | Frontend page | `frontend/src/pages/payments/PaymentsPage.tsx` |
 | Frontend service | `frontend/src/services/payment.service.ts` |
-| Frontend hook | `frontend/src/hooks/usePayment.ts` |
-| Seed command | `apps/common/management/commands/seed_amenities.py` |
+
+### Payment flow
+
+```text
+User clicks "Make Payment"
+   ↓
+Selects an Amenity
+   ↓
+POST /api/payments/   { amenity_id, employee_id? }     (no gateway field)
+   ↓
+PaymentView.post()                                 apps/payments/views.py
+   ↓ @require_role(SUPER_ADMIN, ADMIN, HR_MANAGER, EMPLOYEE)
+   ↓ EMPLOYEE → employee_id = self
+   ↓ SUPER_ADMIN → employee_id required
+   ↓ others → employee_id defaults to self
+   ↓
+PaymentService.create_payment(...)                 apps/payments/services.py
+   ↓ look up amenity (amount comes from backend, never frontend)
+   ↓ look up employee
+   ↓ if a PENDING payment already exists for the same employee+amenity, reuse it
+   ↓ call RazorpayGateway.create_order(amount in INR → converted to paise)
+   ↓ save payment doc with status PENDING, gateway = "RAZORPAY"
+   ↓ log_activity("PAYMENT", "PAYMENT_CREATED", ...)
+   ↓
+Response: { payment_id, order_id, amount, currency, key_id }
+   ↓
+Frontend loads https://checkout.razorpay.com/v1/checkout.js
+   ↓ opens Razorpay Checkout with key_id, order_id, amount, currency
+   ↓
+User completes test payment in the Razorpay modal
+   ↓
+Razorpay returns { razorpay_order_id, razorpay_payment_id, razorpay_signature }
+   ↓
+Frontend POST /api/payments/<id>/verify/   { razorpay_order_id, razorpay_payment_id, razorpay_signature }
+   ↓
+PaymentService.verify_payment(...)                apps/payments/services.py
+   ↓ verify Razorpay Checkout signature with RAZORPAY_KEY_SECRET
+   ↓ mark payment PAID, store gateway_payment_id, set payment_date
+   ↓ log_activity("PAYMENT", "PAYMENT_VERIFIED", ...)
+   ↓
+Razorpay also sends a webhook to /api/payments/webhook/razorpay/  (HMAC signed)
+   ↓
+RazorpayWebhookView verifies X-Razorpay-Signature, then updates the payment:
+   status = PAID (or FAILED / PENDING for authorized)
+   gateway_payment_id = razorpay payment id
+   log_activity("PAYMENT", "PAYMENT_VERIFIED", ...)
+   ↓ idempotent: re-deliveries for the same gateway payment id are skipped
+```
+
+### Razorpay configuration
+
+All Razorpay credentials are loaded from `backend/.env`:
+
+```text
+RAZORPAY_KEY_ID=            # publishable, sent to the frontend
+RAZORPAY_KEY_SECRET=        # backend only, used to verify Checkout signatures
+RAZORPAY_WEBHOOK_SECRET=    # backend only, used to verify webhook signatures
+RAZORPAY_ENVIRONMENT=TEST   # TEST or LIVE
+```
+
+- The backend issues Razorpay orders using HTTP Basic auth with the key
+  id/secret pair.
+- Amounts are always supplied to the gateway in **paise** (1 INR = 100 paise).
+  The backend multiplies the INR amount by 100 when calling Razorpay.
+- The frontend receives only `key_id` and the order details — never the
+  secret or webhook secret.
+
+### Security notes
+
+- `RAZORPAY_KEY_SECRET` and `RAZORPAY_WEBHOOK_SECRET` live only in the backend
+  `.env` and are **never** sent to the browser. Only `RAZORPAY_KEY_ID` is
+  exposed to the frontend for the Razorpay Checkout widget.
+- The payment amount is **always** read from the amenity record on the server
+  — the frontend cannot influence it.
+- Webhook requests are authenticated by HMAC-SHA256 over the raw body using
+  the webhook secret before any DB update.
+- A payment is only marked as PAID after the backend re-derives the
+  Razorpay Checkout signature with the key secret. The frontend's report of
+  success is never trusted on its own.
+- A pending payment is reused (not duplicated) for the same employee + amenity.
+- The webhook handler is idempotent: re-deliveries for the same gateway
+  payment id, or payments already in a terminal state, are ignored.
+
+### Status mapping
+
+Razorpay payment statuses are mapped to EmpSphere internal statuses:
+
+| Razorpay | EmpSphere |
+|----------|-----------|
+| `captured`, `succeeded`, `paid` | `PAID` |
+| `authorized` | `PENDING` |
+| `failed`, `error` | `FAILED` |
+| `refunded` | `REFUNDED` |
+| `cancelled` | `CANCELLED` |
+| `created`, `pending` | `PENDING` |
+| anything else | `PENDING` |
+
+### API endpoints
+
+| Method | URL | Role | Description |
+|--------|-----|------|-------------|
+| POST | `/api/payments/` | SUPER_ADMIN, ADMIN, HR_MANAGER, EMPLOYEE | Create payment |
+| GET | `/api/payments/` | SUPER_ADMIN, ADMIN, HR_MANAGER, EMPLOYEE | List payments |
+| GET | `/api/payments/me/` | SUPER_ADMIN, ADMIN, HR_MANAGER, EMPLOYEE | Get my payments |
+| GET | `/api/payments/<id>/` | SUPER_ADMIN, ADMIN, HR_MANAGER, EMPLOYEE | Get single payment |
+| POST | `/api/payments/<id>/verify/` | SUPER_ADMIN, ADMIN, HR_MANAGER, EMPLOYEE | Verify payment (Razorpay Checkout signature) |
+| POST | `/api/payments/<id>/cancel/` | SUPER_ADMIN, ADMIN, HR_MANAGER, EMPLOYEE | Cancel payment |
+| GET | `/api/payments/amenities/` | SUPER_ADMIN, ADMIN, HR_MANAGER, EMPLOYEE | List amenities |
+| POST | `/api/payments/amenities/` | SUPER_ADMIN, ADMIN | Create amenity |
+| PUT | `/api/payments/amenities/<id>/` | SUPER_ADMIN, ADMIN | Update amenity |
+| DELETE | `/api/payments/amenities/<id>/` | SUPER_ADMIN, ADMIN | Soft delete amenity |
+| POST | `/api/payments/webhook/razorpay/` | Public (HMAC signed) | Razorpay webhook |
+| GET | `/api/payments/callback/` | Public | Razorpay redirect |
 
 ---
 
-## 16. Activity Logs
+## 19. Activity Logs
 
 ### Purpose
 
-Records every important action in the system for audit purposes. Every service call to `self.log_activity(...)` writes an entry.
+A single reusable audit log function used by every module to record what happened.
 
-### Log Entry Fields
+### Important files
 
-- `module` — Which module (e.g., AUTHENTICATION, PAYMENT, EMPLOYEE)
-- `action` — What happened (e.g., LOGIN, PAYMENT_CREATED, EMPLOYEE_UPDATED)
-- `performed_by` — User ID who performed the action
-- `target_id` — The affected resource ID
-- `status` — SUCCESS or FAILED
-- `description` — Human-readable description
-- `metadata` — Additional JSON data
-- `created_at` — Timestamp
-
-### Access Rules
-
-- **EMPLOYEE** — Can view only their own logs.
-- **HR_MANAGER / ADMIN** — Can view logs of users they manage.
-- **SUPER_ADMIN** — Can view all logs.
-
-### Files
-
-| Layer | File |
-|-------|------|
-| Controller | `apps/activity_logs/views/activity_log_view.py` |
-| Service | `apps/activity_logs/services/audit_service.py` |
+| Purpose | File |
+|---------|------|
+| Log function | `apps/activity_logs/services.py` |
+| View | `apps/activity_logs/views.py` |
+| URL | `apps/activity_logs/urls.py` |
 | Frontend page | `frontend/src/pages/activityLogs/ActivityLogsPage.tsx` |
 | Frontend service | `frontend/src/services/activityLog.service.ts` |
 
+### How it works
+
+```python
+from apps.activity_logs.services import log_activity
+
+log_activity(
+    module="EMPLOYEE",
+    action="CREATE_EMPLOYEE",
+    performed_by=str(user_id),
+    target_id=str(new_employee_id),
+    status="SUCCESS",
+    description="Created employee John Doe (john@example.com).",
+)
+```
+
+The function inserts a document into the `activity_logs` collection:
+
+```text
+log_activity(module, action, performed_by, target_id, status, description, metadata)
+   ↓
+get_collection("activity_logs").insert_one({
+    "module", "action", "performed_by", "target_id",
+    "status", "description", "metadata", "created_at"
+})
+   ↓
+MongoDB "activity_logs" collection
+```
+
+### What fields are stored
+
+| Field | Description |
+|-------|-------------|
+| `module` | Which area (EMPLOYEE, LEAVE, PAYMENT, AUTHENTICATION, ...) |
+| `action` | What happened (CREATE_EMPLOYEE, APPROVE_LEAVE, LOGIN, ...) |
+| `performed_by` | User ID who did the action |
+| `target_id` | The affected record's ID |
+| `status` | SUCCESS or FAILED |
+| `description` | Human-readable message |
+| `metadata` | Optional extra dict |
+| `created_at` | Timestamp |
+
+### Who can access logs
+
+- EMPLOYEE — only their own logs.
+- HR_MANAGER / ADMIN — logs of users they can manage.
+- SUPER_ADMIN — all logs.
+- Logs are filtered to the last 30 days.
+
+### API endpoints
+
+| Method | URL | Role | Description |
+|--------|-----|------|-------------|
+| GET | `/api/activity-logs/` | EMPLOYEE, HR_MANAGER, ADMIN, SUPER_ADMIN | List activity logs |
+| GET | `/api/activity-logs/actions/` | Any authenticated user | List distinct actions |
+
 ---
 
-## 17. Reports
+## 20. Reports
 
 ### Purpose
 
-Generates management reports for employees, attendance, leaves, departments, designations, and activity logs.
+Generate management reports with summaries and filtered record lists.
 
-### Access
+### Important files
 
-Restricted to `SUPER_ADMIN`, `ADMIN`, and `HR_MANAGER`.
-
-### Report Types
-
-- **Employees** — Filterable by department, designation, status, joining date.
-- **Attendance** — Filterable by employee, department, date range, status.
-- **Leaves** — Filterable by employee, department, date range, status, leave type.
-- **Departments** — With search and include-inactive filter.
-- **Designations** — With search and include-inactive filter.
-- **Activity** — Filterable by module, action, user, date range.
-
-### Files
-
-| Layer | File |
-|-------|------|
-| Controller | `apps/reports/controllers/report_controller.py` |
-| Service | `apps/reports/services/report_service.py` |
-| Repository | `apps/reports/repositories/report_repository.py` |
+| Purpose | File |
+|---------|------|
+| View | `apps/reports/views.py` |
+| Service | `apps/reports/services.py` |
+| URL | `apps/reports/urls.py` |
 | Frontend page | `frontend/src/pages/reports/ReportsPage.tsx` |
 | Frontend service | `frontend/src/services/report.service.ts` |
 
+### Available reports
+
+| Report | URL | Description |
+|--------|-----|-------------|
+| Employees | `/api/reports/employees/` | Employee list + summary (by department, designation, role) |
+| Attendance | `/api/reports/attendance/` | Attendance records + summary (present/absent/half/leave) |
+| Leaves | `/api/reports/leaves/` | Leave records + summary (pending/approved/rejected, by type) |
+| Departments | `/api/reports/departments/` | Department list + summary |
+| Designations | `/api/reports/designations/` | Designation list + summary |
+| Activity | `/api/reports/activity/` | Activity log records + summary (by action, by module) |
+
+### Backend flow
+
+```text
+GET /api/reports/employees/?department_id=...&status=...
+   ↓
+ReportView.get()                                  apps/reports/views.py
+   ↓ @require_role(SUPER_ADMIN, ADMIN, HR_MANAGER)
+   ↓
+ReportService.get_employee_report(filters)        apps/reports/services.py
+   ↓ build query from filters
+   ↓ get summary (counts) + records (paginated)
+   ↓ log_activity("REPORTS", "GENERATE_REPORT", ...)
+   ↓
+Response: { summary, records, meta: { page, page_size, total_records, total_pages } }
+```
+
 ---
 
-## 18. Statistics / Dashboard
+## 21. Statistics and Dashboards
 
 ### Purpose
 
-Provides summary statistics for role-specific dashboards.
+Provide summary counts for the dashboard.
 
-### Files
+### Important files
 
-| Layer | File |
-|-------|------|
-| Controller | `apps/statistics/controllers/statistics_controller.py` |
-| Service | `apps/statistics/services/statistics_service.py` |
-| Frontend pages | `frontend/src/pages/dashboard/*.tsx` (4 role-specific dashboards) |
+| Purpose | File |
+|---------|------|
+| View | `apps/statistics/views.py` |
+| Service | `apps/statistics/services.py` |
+| URL | `apps/statistics/urls.py` |
+| Frontend page | `frontend/src/pages/dashboard/DashboardPage.tsx` |
 | Frontend service | `frontend/src/services/statistics.service.ts` |
 
-### Dashboard Pages
+### Backend flow
 
-- `SuperAdminDashboardPage.tsx`
-- `AdminDashboardPage.tsx`
-- `HRDashboardPage.tsx`
-- `EmployeeDashboardPage.tsx`
-
-Each dashboard shows role-relevant statistics fetched from `/api/statistics/`.
-
----
-
-## 19. Environment Variables
-
-### Backend (`backend/.env`)
-
-```
-# Django
-SECRET_KEY=YOUR_VALUE_HERE
-DEBUG=True
-
-# MongoDB
-MONGO_URI=mongodb://localhost:27017
-DATABASE_NAME=empsphere_db
-
-# JWT
-JWT_SECRET=YOUR_VALUE_HERE
-JWT_ALGORITHM=HS256
-ACCESS_TOKEN_EXP_MINUTES=30
-REFRESH_TOKEN_EXP_DAYS=7
-PASSWORD_RESET_TOKEN_EXP_MINUTES=10
-
-# Email (SMTP)
-EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_USE_TLS=True
-EMAIL_HOST_USER=YOUR_VALUE_HERE
-EMAIL_HOST_PASSWORD=YOUR_VALUE_HERE
-DEFAULT_FROM_EMAIL=YOUR_VALUE_HERE
-
-# Google OAuth (optional)
-GOOGLE_CLIENT_ID=YOUR_VALUE_HERE
-GOOGLE_CLIENT_SECRET=YOUR_VALUE_HERE
-
-# Cashfree Sandbox
-CASHFREE_APP_ID=YOUR_VALUE_HERE
-CASHFREE_SECRET_KEY=YOUR_VALUE_HERE
-CASHFREE_ENVIRONMENT=SANDBOX
-CASHFREE_API_VERSION=2025-01-01
-
-# Registration
-COMPANY_REGISTRATION_SECRET=YOUR_VALUE_HERE
-
-# Seed defaults
-SUPER_ADMIN_EMAIL=admin@empsphere.com
-SUPER_ADMIN_PASSWORD=YOUR_VALUE_HERE
-SUPER_ADMIN_EMPLOYEE_CODE=EMP001
-
-# CORS / URLs
-FRONTEND_URL=http://localhost:3000
-BACKEND_URL=http://localhost:8000
-ALLOWED_HOSTS=*
-```
-
-### Frontend (`frontend/.env`)
-
-```
-VITE_API_BASE_URL=http://127.0.0.1:8000/api
-VITE_APP_URL=http://localhost:3000
-VITE_GOOGLE_CLIENT_ID=
+```text
+GET /api/statistics/
+   ↓
+StatisticsView.get()                              apps/statistics/views.py
+   ↓ @require_role(SUPER_ADMIN, ADMIN, HR_MANAGER, EMPLOYEE)
+   ↓
+StatisticsService.get_dashboard_stats()           apps/statistics/services.py
+   ↓ count users, departments, attendance, pending leaves
+   ↓
+Response: { total_employees, total_departments, total_attendance, pending_leaves }
 ```
 
 ---
 
-## 20. Running the Project
+## 22. MongoDB
+
+### Connection
+
+`apps/common/database.py` — single shared connection:
+
+```python
+from pymongo import MongoClient
+_client = MongoClient(settings.MONGO_URI, ...)
+mongo: Database = _client[settings.DATABASE_name]
+
+def get_collection(name: str):
+    return mongo[name]
+```
+
+### Collections
+
+Defined in `apps/common/constants.py` — `class Collections`:
+
+| Collection | Holds |
+|-----------|-------|
+| `users` | Employee and admin accounts (every role) |
+| `roles` | Role documents (SUPER_ADMIN, ADMIN, HR_MANAGER, EMPLOYEE) |
+| `permissions` | Permission documents |
+| `tokens` | Blacklisted refresh tokens |
+| `otps` | One-time passwords |
+| `departments` | Departments |
+| `designations` | Designations |
+| `attendance` | Attendance records |
+| `leaves` | Leave applications |
+| `payments` | Payment records |
+| `amenities` | Office amenities (name, amount) |
+| `activity_logs` | Audit log entries |
+
+### Important behaviors
+
+- Document IDs are `ObjectId`; all APIs return IDs as **strings**.
+- Soft delete: employees use `is_active: False, is_deleted: True`; departments and amenities use `is_active: False`.
+- Timestamps: `created_at`, `updated_at` stored as UTC datetime.
+- Unique indexes are created in service `__init__` methods (e.g., employee email, department name/code).
+
+---
+
+## 23. Axios and API Communication
+
+### Axios instance
+
+`frontend/src/config/axios.ts`:
+
+```text
+baseURL: ENV.API_BASE_URL   (default: http://127.0.0.1:8000/api)
+```
+
+### Request interceptor
+
+- Attaches `Authorization: Bearer <access_token>` to every request.
+- Skips public endpoints: `/auth/login/`, `/auth/register/`, `/auth/logout/`, `/auth/refresh-token/`, `/auth/verify-email/`, `/auth/google-login/`, `/auth/send-otp/`, `/auth/verify-otp/`, `/auth/set-password/`.
+
+### Response interceptor (401 handling)
+
+```text
+Request → 401 Unauthorized
+   ↓
+if not already retried and not a public endpoint:
+   ↓ POST /auth/refresh-token/ with { refresh_token }
+   ↓ on success: save new access + refresh tokens, retry original request
+   ↓ on failure: clear tokens, dispatch "auth:expired" event → redirect to /login
+```
+
+### http wrapper
+
+`frontend/src/services/api.ts`:
+
+- `http.get()`, `http.post()`, `http.put()`, `http.patch()`, `http.delete()`.
+- Each unwraps the backend's `{success, message, data}` envelope via `unwrap()` — returns only the `data` field.
+
+### Token storage
+
+`frontend/src/utils/token.ts` — `TokenUtil`:
+
+- Access token stored in `localStorage` under `emp_access_token`.
+- Refresh token stored under `emp_refresh_token`.
+- `setTokens()`, `getAccessToken()`, `getRefreshToken()`, `clear()`.
+
+---
+
+## 24. Environment Variables
+
+### Backend — `backend/.env`
+
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `SECRET_KEY` | Django secret key | dev-only fallback |
+| `DEBUG` | Debug mode | `True` |
+| `ALLOWED_HOSTS` | Comma-separated allowed hosts | `*` |
+| `MONGO_URI` | MongoDB connection URI | `mongodb://localhost:27017` |
+| `DATABASE_NAME` | MongoDB database name | `empsphere_db` |
+| `JWT_SECRET` | JWT signing secret | falls back to `SECRET_KEY` |
+| `JWT_ALGORITHM` | JWT algorithm | `HS256` |
+| `ACCESS_TOKEN_EXP_MINUTES` | Access token lifetime | `30` |
+| `REFRESH_TOKEN_EXP_DAYS` | Refresh token lifetime | `7` |
+| `PASSWORD_RESET_TOKEN_EXP_MINUTES` | Reset token lifetime | `10` |
+| `EMAIL_HOST` | SMTP host | `` |
+| `EMAIL_PORT` | SMTP port | `587` |
+| `EMAIL_HOST_USER` | SMTP username | `` |
+| `EMAIL_HOST_PASSWORD` | SMTP password | `` |
+| `EMAIL_USE_TLS` | Use TLS | `True` |
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID | `` |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth secret | `` |
+| `GOOGLE_REDIRECT_URI` | Google redirect URI | `` |
+| `RAZORPAY_KEY_ID` | Razorpay publishable key id | `` |
+| `RAZORPAY_KEY_SECRET` | Razorpay key secret (backend only) | `` |
+| `RAZORPAY_WEBHOOK_SECRET` | Razorpay webhook secret (backend only) | `` |
+| `RAZORPAY_ENVIRONMENT` | Razorpay environment label | `TEST` |
+| `COMPANY_REGISTRATION_SECRET` | Required for registration | `` |
+| `FRONTEND_URL` | Frontend URL (CORS) | `http://localhost:3000` |
+| `BACKEND_URL` | Backend URL (webhooks) | `http://localhost:8000` |
+
+### Frontend — `frontend/.env`
+
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `VITE_API_BASE_URL` | Backend API base URL | `http://127.0.0.1:8000/api` |
+| `VITE_APP_URL` | Frontend app URL | `http://localhost:3000` |
+| `VITE_GOOGLE_CLIENT_ID` | Google OAuth client ID | (empty) |
+| `VITE_RAZORPAY_KEY_ID` | Razorpay publishable key id (frontend-safe) | (empty) |
+
+---
+
+## 25. Running the Project
 
 ### Prerequisites
 
 - Python 3.8+
 - Node.js 18+
-- MongoDB running locally (or a MongoDB URI)
+- MongoDB running locally (or a remote URI)
 
 ### Backend
 
 ```powershell
 cd backend
-
-# Create virtual environment
 python -m venv venv
 .\venv\Scripts\Activate.ps1
-
-# Install dependencies
 pip install -r requirements.txt
 
-# Create .env file (see Environment Variables section)
-# Copy the variables above into backend/.env with your real values
+# Edit backend/.env (SECRET_KEY, JWT_SECRET, MONGO_URI, EMAIL_*, GOOGLE_*, RAZORPAY_*)
 
-# Seed RBAC data (roles, permissions, super admin user)
 .\venv\Scripts\python.exe manage.py seed_rbac
-
-# Seed test amenities
 .\venv\Scripts\python.exe manage.py seed_amenities
-
-# Start the server
-.\venv\Scripts\python.exe manageserver
+.\venv\Scripts\python.exe manage.py runserver
 ```
 
 Backend runs at `http://localhost:8000`.
@@ -885,14 +1354,9 @@ Backend runs at `http://localhost:8000`.
 
 ```powershell
 cd frontend
-
-# Install dependencies
 npm install
-
-# Copy .env.example to .env and fill in values
 Copy-Item .env.example .env
-
-# Start dev server
+# Edit frontend/.env: VITE_API_BASE_URL, VITE_GOOGLE_CLIENT_ID (optional)
 npm run dev
 ```
 
@@ -900,118 +1364,14 @@ Frontend runs at `http://localhost:3000`.
 
 ---
 
-## 21. Cashfree Sandbox Setup
-
-1. Create a free Cashfree account at [https://www.cashfree.com](https://www.cashfree.com).
-2. Go to the Cashfree Dashboard → **Sandbox** → **API Credentials**.
-3. Copy the **App ID** and **Secret Key**.
-4. Put them in `backend/.env`:
-   ```
-   CASHFREE_APP_ID=YOUR_VALUE_HERE
-   CASHFREE_SECRET_KEY=YOUR_VALUE_HERE
-   CASHFREE_ENVIRONMENT=SANDBOX
-   ```
-5. Start the backend and frontend.
-6. Log in to EmpSphere.
-7. Go to **Payments** → **Make Payment**.
-8. Select **Myself** or an employee.
-9. Select an amenity.
-10. Confirm the amount (supplied by the backend).
-11. The Cashfree Sandbox checkout opens.
-12. Complete a test payment using Sandbox test credentials.
-13. The payment status updates in Payment History.
-
-> **SANDBOX = TESTING.** It does not move real money.
-
----
-
-## 22. Debugging Guide
-
-### 400 Bad Request
-
-- Check the request body matches the serializer fields.
-- Check backend serializer validation errors in the response.
-- Check backend logs (`backend/logs/app.log` or terminal).
-- For payments: check the Cashfree response and environment variables.
-
-### 401 Unauthorized
-
-- Check the JWT token is being sent (`Authorization: Bearer <token>`).
-- Check the token is not expired.
-- Check the user is logged in (Redux auth state).
-- Check the `JWT_SECRET` matches between token creation and validation.
-
-### 403 Forbidden
-
-- Check the user's role against the `@require_role` decorator on the endpoint.
-- Check resource ownership (employees can only access their own data).
-- Check the `RolePermission` hierarchy.
-
-### 404 Not Found
-
-- Check the frontend URL matches the Django URL configuration.
-- Check the API endpoint path.
-- Check route parameters (e.g., `/api/employees/<id>/`).
-
-### 500 Internal Server Error
-
-- Check the Django terminal first — it shows the full traceback.
-- Check `backend/logs/app.log`.
-
-### CORS Errors
-
-- Check `FRONTEND_URL` in `backend/.env` matches the frontend origin.
-- Check `CORS_ALLOWED_ORIGINS` in `config/settings.py`.
-
-### MongoDB Errors
-
-- Check MongoDB is running (`mongod`).
-- Check `MONGO_URI` in `backend/.env`.
-- Check the database name.
-
-### Cashfree Errors
-
-- Check `CASHFREE_APP_ID` and `CASHFREE_SECRET_KEY` in `backend/.env`.
-- Check `CASHFREE_ENVIRONMENT` is `SANDBOX` for testing.
-- Check backend logs for the Cashfree response.
-- Check the checkout configuration (return_url, notify_url).
-- Check webhook signature verification.
-
-### Frontend TypeScript
+## 26. Verification
 
 ```powershell
-cd frontend
-npx tsc --noEmit
-```
-
-### Vite Build
-
-```powershell
-cd frontend
-npm run build
-```
-
-### Browser DevTools
-
-- **Console** — JavaScript errors, Redux logs.
-- **Network** — Request/response inspection, status codes, payloads.
-
----
-
-## 23. Verification
-
-Run these commands to verify the project is healthy:
-
-### Backend
-
-```powershell
+# Backend
 cd backend
 .\venv\Scripts\python.exe manage.py check
-```
 
-### Frontend
-
-```powershell
+# Frontend
 cd frontend
 npx tsc --noEmit
 npm run build
@@ -1019,161 +1379,130 @@ npm run build
 
 ---
 
-## 24. Deployment
+## 27. Debugging Guide
 
-### Frontend — Vercel
-
-- Build command: `npm run build`
-- Output directory: `dist`
-- Environment variables: Set `VITE_API_BASE_URL` to your production backend URL.
-
-### Backend
-
-- Set `DEBUG=False` in production.
-- Set `ALLOWED_HOSTS` to your domain.
-- Set `FRONTEND_URL` to your production frontend URL.
-- Set `BACKEND_URL` to your production backend URL.
-- Set `CASHFREE_ENVIRONMENT=PRODUCTION` for live payments.
-- Use a production MongoDB instance (e.g., MongoDB Atlas).
-
-### Environments
-
-| Environment | Cashfree | Purpose |
-|------------|----------|---------|
-| LOCAL | SANDBOX | Development on your machine |
-| SANDBOX | SANDBOX | Testing with fake money |
-| PRODUCTION | PRODUCTION | Live with real money |
+| Error | What it means | Where to look | Common cause in THIS project |
+|-------|---------------|---------------|----------------------------|
+| **400 Bad Request** | Invalid input | Serializer errors in response body | Field name mismatch, missing required field, invalid email format |
+| **401 Unauthorized** | JWT missing / expired | `apps/common/authentication.ts`, `config/axios.ts` | Token expired and refresh failed; check `JWT_SECRET` consistency |
+| **403 Forbidden** | Wrong role | `@require_role` decorator, `apps/common/permissions.py` | User role not in allowed list; trying to access another user's record |
+| **404 Not Found** | Resource not found | Service layer `find_one()` | Invalid ObjectId, or record was soft-deleted |
+| **500 Internal Server Error** | Unhandled exception | `backend/logs/app.log`, terminal traceback | Unexpected error caught by `ExceptionMiddleware` |
+| **CORS error** | Cross-origin blocked | `config/settings.py` `CORS_ALLOWED_ORIGINS` | `FRONTEND_URL` not matching the actual frontend origin |
+| **MongoDB connection** | Cannot connect to DB | `apps/common/database.py` | MongoDB not running, wrong `MONGO_URI` |
+| **JWT invalid** | Token verification failed | `apps/common/authentication.py` | Wrong `JWT_SECRET`, expired token, tampered token |
+| **OTP expired** | OTP no longer valid | `apps/authentication/services.py` | OTP lifetime is 10 minutes; user took too long |
+| **Image upload fails** | File rejected | `ProfileImageService.validate_file()` | Wrong content type (not jpeg/png/webp/gif) or > 5 MB |
+| **Payment fails** | Razorpay error | `apps/payments/gateways.py`, `apps/payments/services.py` | Wrong Razorpay credentials, sandbox unreachable |
+| **Frontend TypeScript** | Type error | `tsconfig.json`, terminal output | Missing type, wrong import path, `noUnusedLocals` violation |
+| **Build errors** | Vite/tsc failure | Terminal output | TypeScript errors, missing dependencies |
+| **API connection** | Frontend cannot reach backend | `frontend/src/config/env.ts` | Wrong `VITE_API_BASE_URL`, backend not running |
 
 ---
 
-## 25. Safe Future Development
+## 28. Deployment
 
-When adding a new feature, follow the existing layered pattern:
-
-```
-New Feature
-    ↓
-Create/modify model/schema/document structure (if needed)
-    ↓
-Repository (database access)
-    ↓
-Service (business logic)
-    ↓
-Serializer/Validator (input validation)
-    ↓
-Controller (HTTP handling)
-    ↓
-URL (route definition)
-    ↓
-Frontend service (API calls)
-    ↓
-Hook/state (Redux slice)
-    ↓
-Page/component (UI)
-    ↓
-Testing
-```
-
-### Rules
-
-- **Do not** put database queries directly in React components.
-- **Do not** put business logic inside controllers — use the service layer.
-- **Do not** expose secrets (`JWT_SECRET`, `CASHFREE_SECRET_KEY`) in frontend code.
-- **Do not** trust frontend amounts or roles — always validate on the backend.
-- **Do not** bypass backend authorization — always use `@require_role`.
-- **Do** reuse existing services, components, and patterns.
-- **Do** follow existing naming conventions.
-- **Do** run verification (`python manage.py check`, `npx tsc --noEmit`, `npm run build`) before committing.
+There is no Vercel configuration in the current project. The CI pipeline (`.github/workflows/ci-backend.yml`) runs backend tests against MongoDB on push/PR. Deployment architecture is not defined in the codebase — you would need to configure this separately.
 
 ---
 
-## 26. Fresher Learning Path
+## 29. Safe Development Rules
 
-Study the project in this order:
-
-1. **Project structure** — Understand the folder layout (this guide, Section 4).
-2. **React basics** — `frontend/src/App.tsx`, `main.tsx`.
-3. **TypeScript** — `frontend/src/types/`, `frontend/src/types/payment.ts`.
-4. **Axios** — `frontend/src/config/axios.ts`, `frontend/src/services/api.ts`.
-5. **Django** — `backend/config/settings.py`, `backend/config/urls.py`.
-6. **Django REST Framework** — `backend/apps/employee/controllers/employee_controller.py`.
-7. **MongoDB** — `backend/apps/common/database/mongo.py`, `backend/apps/common/core/collections.py`.
-8. **Controller → Service → Repository** — Trace a request through `employee/` or `attendance/`.
-9. **JWT** — `backend/apps/common/middleware/authentication.py`, `backend/apps/authentication/services/auth_service.py`.
-10. **RBAC** — `backend/apps/common/core/roles.py`, `backend/apps/common/core/permissions.py`, `backend/apps/common/decorators/permission.py`.
-11. **Employee module** — `backend/apps/employee/`, `frontend/src/pages/employees/`.
-12. **Organization** — `backend/apps/organization/`, `frontend/src/pages/departments/`.
-13. **Attendance** — `backend/apps/attendance/`, `frontend/src/pages/attendance/`.
-14. **Leave** — `backend/apps/leave/`, `frontend/src/pages/leaves/`.
-15. **Payment / Cashfree** — `backend/apps/payment/`, `frontend/src/pages/payments/`.
-16. **Reports / Statistics** — `backend/apps/reports/`, `backend/apps/statistics/`.
-17. **Deployment** — This guide, Section 24.
+1. **Never modify code** when asked to document — document what exists.
+2. **Never commit secrets** — `.env` files are gitignored.
+3. **Never trust the frontend for payment amounts** — the backend always reads the amount from the amenity record.
+4. **Never delete leave records** — they are historical business data.
+5. **Never approve your own leave** — enforced in the service layer.
+6. **Never expose `RAZORPAY_KEY_SECRET` or `RAZORPAY_WEBHOOK_SECRET`** — they live only in the backend `.env`.
+7. **Never skip `seed_rbac`** — you need the Super Admin user and roles to start.
+8. **Never use frontend role checks alone** — the backend always re-checks roles via `@require_role`.
 
 ---
 
-## 27. How EmpSphere Works (Summary)
+## 30. Fresher Learning Path
 
-### Main Flow
+Read in this order:
 
+1. `docs/PROJECT_GUIDE.md` (this file) — top to bottom.
+2. `backend/config/settings.py` and `config/urls.py`.
+3. `backend/apps/common/constants.py` — collections, roles, OTP policy.
+4. `backend/apps/common/database.py` — how MongoDB is connected.
+5. `backend/apps/common/authentication.py` — the JWT auth class.
+6. `backend/apps/common/permissions.py` — the role decorator.
+7. `backend/apps/authentication/services.py` — the `login` method.
+8. `backend/apps/employees/services.py` — `create_employee`.
+9. `backend/apps/leaves/services.py` — `apply_leave` and `update_leave_status`.
+10. `frontend/src/config/axios.ts` — the JWT interceptor.
+11. `frontend/src/services/auth.service.ts` — how the frontend calls the backend.
+12. `frontend/src/store/slices/authSlice.ts` — how the user is stored in Redux.
+13. `frontend/src/routes/AppRoutes.tsx` — how routes are protected.
+
+That's the whole codebase. There is no magic — each piece is small and does one thing.
+
+---
+
+## 31. Quick File Reference
+
+### Where is the code?
+
+| Question | Answer |
+|----------|--------|
+| Employee creation | `apps/employees/services.py` → `create_employee()` |
+| JWT checked | `apps/common/authentication.py` → `JWTAuthentication.authenticate()` |
+| Permission decorator | `apps/common/permissions.py` → `require_role()` |
+| Role received | `request.user.get("role")` (set by JWT auth) |
+| Leave approval | `apps/leaves/services.py` → `update_leave_status()` |
+| Image upload | `apps/authentication/services.py` → `ProfileImageService.upload()` |
+| Payment verification | `apps/payments/services.py` → `verify_payment()` |
+| Activity logging | `apps/activity_logs/services.py` → `log_activity()` |
+| Axios configured | `frontend/src/config/axios.ts` |
+| Token refresh | `frontend/src/config/axios.ts` (response interceptor) |
+| MongoDB connection | `apps/common/database.py` |
+| Response helpers | `apps/common/responses.py` → `success()` / `error()` |
+| Password hashing | `apps/common/utils.py` → `hash_password()` |
+| Employee code generation | `apps/common/utils.py` → `generate_employee_code()` |
+| Token blacklist | `apps/authentication/services.py` → `blacklist_token()` |
+| Settings object | `apps/common/settings.py` → `settings` |
+| Frontend token storage | `frontend/src/utils/token.ts` → `TokenUtil` |
+| Frontend auth state | `frontend/src/store/slices/authSlice.ts` |
+| Frontend route guards | `frontend/src/routes/ProtectedRoute.tsx`, `RequireRole.tsx` |
+
+---
+
+## 32. How EmpSphere Works — Final Summary
+
+```text
+User opens browser
+       ↓
+React app loads (main.tsx → App.tsx)
+       ↓
+AppBootstrap checks for stored JWT → dispatches fetchMe
+       ↓
+User sees dashboard (role-specific)
+       ↓
+User performs an action (create employee, apply leave, ...)
+       ↓
+Frontend service calls backend via Axios
+       ↓
+Axios attaches JWT (except public endpoints)
+       ↓
+Django routes the request to the correct view
+       ↓
+JWTAuthentication decodes the token → loads user from MongoDB
+       ↓
+@require_role checks the user's role
+       ↓
+Serializer validates the request body
+       ↓
+Service executes business logic
+       ↓
+MongoDB stores/retrieves data
+       ↓
+Activity log records what happened
+       ↓
+Response flows back: { success, message, data }
+       ↓
+Frontend unwraps data, updates UI
 ```
-USER
-    ↓
-REACT FRONTEND (Vite + TypeScript)
-    ↓
-AXIOS (HTTP client with JWT interceptor)
-    ↓
-DJANGO REST API (URL routing)
-    ↓
-CONTROLLER (handles HTTP, extracts data)
-    ↓
-SERIALIZER / VALIDATOR (validates request data)
-    ↓
-SERVICE (business logic and rules)
-    ↓
-REPOSITORY (database access)
-    ↓
-MONGODB (data storage)
-```
 
-### Payment Flow
-
-```
-USER
-    ↓
-PAYMENTS PAGE (PaymentsPage.tsx)
-    ↓
-Select "Myself" or "Select Employee"
-    ↓
-Select an Amenity
-    ↓
-BACKEND looks up the amenity amount (never trusts frontend)
-    ↓
-BACKEND creates a Cashfree Sandbox order
-    ↓
-CASHFREE SANDBOX CHECKOUT opens in the browser
-    ↓
-User completes a test payment (UPI / Card / Netbanking)
-    ↓
-CASHFREE sends webhook to backend + redirects to callback
-    ↓
-BACKEND verifies payment status with Cashfree
-    ↓
-Payment status stored in MongoDB ("payments" collection)
-    ↓
-Activity log written ("payments" collection)
-    ↓
-User sees updated Payment History
-```
-
-### In Simple Terms
-
-1. The **user** interacts with the React frontend (buttons, forms, tables).
-2. **Axios** sends the user's request to the Django backend, attaching the JWT token.
-3. The **Django URL router** directs the request to the correct **controller**.
-4. The **controller** uses a **serializer** to validate the incoming data.
-5. The **service** performs the actual business logic (the "brain" of the operation).
-6. The **repository** talks to **MongoDB** to store or retrieve data.
-7. The response flows back through the same layers to the frontend.
-8. **Redux** updates the application state, and **React re-renders** the UI.
-
-This layered approach keeps each part of the system focused on one responsibility, making the code easier to understand, test, and modify.
+Every feature follows this same pattern. Once you understand one module, you understand them all.

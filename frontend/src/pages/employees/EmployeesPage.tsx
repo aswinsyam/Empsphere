@@ -2,16 +2,11 @@
  * EmployeesPage.
  *
  * Main Employee Management page. Lists employees with search/filters and
- * lets privileged users (SUPER_ADMIN / ADMIN / HR_MANAGER) view, create,
- * edit, and activate/deactivate employees via the reusable
- * `EmployeeFormModal`. Employees are never deleted from this UI.
+ * lets privileged users view, create, edit, and activate/deactivate employees.
  */
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useEmployees } from "@/hooks/useEmployees";
-import { useDepartments } from "@/hooks/useDepartments";
-import { useDesignations } from "@/hooks/useDesignations";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/common/Button";
@@ -25,6 +20,9 @@ import { Department } from "@/types/department";
 import { Designation } from "@/types/designation";
 import { EmployeeFormModal } from "@/components/employees/EmployeeFormModal";
 import { canManageEmployees, ROUTES } from "@/utils/constants";
+import { employeeService } from "@/services/employee.service";
+import { departmentService } from "@/services/department.service";
+import { designationService } from "@/services/designation.service";
 
 const EMPTY_FORM = {
   first_name: "",
@@ -40,22 +38,18 @@ const EMPTY_FORM = {
 };
 
 export function EmployeesPage() {
-  const {
-    employees,
-    total_records,
-    total_pages,
-    page,
-    page_size,
-    loading,
-    error,
-    list,
-    create,
-    update,
-  } = useEmployees();
-  const { departments, list: listDepartments } = useDepartments();
-  const { designations, list: listDesignations } = useDesignations();
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [designations, setDesignations] = useState<Designation[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageSize] = useState(10);
 
   const canManage = canManageEmployees(user?.role);
 
@@ -71,22 +65,36 @@ export function EmployeesPage() {
   const [joiningDateTo, setJoiningDateTo] = useState("");
 
   useEffect(() => {
-    listDepartments({ include_inactive: true });
-    listDesignations({ include_inactive: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    departmentService.list({ include_inactive: true }).then((r) => setDepartments(r.departments));
+    designationService.list({ include_inactive: true }).then((r) => setDesignations(r.designations));
   }, []);
 
+  const loadEmployees = async (pageNum = 1) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await employeeService.list({
+        search: search || undefined,
+        status: filterStatus || undefined,
+        department_id: filterDepartment || undefined,
+        joining_date_from: joiningDateFrom || undefined,
+        joining_date_to: joiningDateTo || undefined,
+        page: pageNum,
+        page_size: pageSize,
+      });
+      setEmployees(result.employees);
+      setPage(result.page);
+      setTotalPages(result.total_pages);
+      setTotalRecords(result.total_records);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load employees");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    list({
-      search: search || undefined,
-      status: filterStatus || undefined,
-      department_id: filterDepartment || undefined,
-      joining_date_from: joiningDateFrom || undefined,
-      joining_date_to: joiningDateTo || undefined,
-      page: 1,
-      page_size: page_size,
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    loadEmployees(1);
   }, [search, filterStatus, filterDepartment, joiningDateFrom, joiningDateTo]);
 
   const resetFilters = () => {
@@ -128,7 +136,7 @@ export function EmployeesPage() {
     setSubmitting(true);
     try {
       if (editing) {
-        await update(editing.user_id, {
+        await employeeService.update(editing.user_id, {
           first_name: form.first_name,
           last_name: form.last_name,
           email: form.email,
@@ -140,7 +148,7 @@ export function EmployeesPage() {
           status: form.status || undefined,
         });
       } else {
-        await create({
+        await employeeService.create({
           first_name: form.first_name,
           last_name: form.last_name,
           email: form.email,
@@ -154,15 +162,7 @@ export function EmployeesPage() {
         });
       }
       setModalOpen(false);
-      await list({
-        search: search || undefined,
-        status: filterStatus || undefined,
-        department_id: filterDepartment || undefined,
-        joining_date_from: joiningDateFrom || undefined,
-        joining_date_to: joiningDateTo || undefined,
-        page: 1,
-        page_size: page_size,
-      });
+      await loadEmployees(1);
     } catch (err) {
       setFormError(
         err && typeof err === "object" && "message" in err
@@ -181,18 +181,10 @@ export function EmployeesPage() {
       : `Activate employee "${emp.first_name} ${emp.last_name}"?`;
     if (!window.confirm(confirmMessage)) return;
     try {
-      await update(emp.user_id, { status: newStatus });
-      await list({
-        search: search || undefined,
-        status: filterStatus || undefined,
-        department_id: filterDepartment || undefined,
-        joining_date_from: joiningDateFrom || undefined,
-        joining_date_to: joiningDateTo || undefined,
-        page: 1,
-        page_size: page_size,
-      });
+      await employeeService.update(emp.user_id, { status: newStatus });
+      await loadEmployees(1);
     } catch {
-      // handled by slice
+      // error handled silently
     }
   };
 
@@ -216,59 +208,59 @@ export function EmployeesPage() {
         <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700">{error}</div>
       ) : null}
 
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
-            <Input
-              label="Search"
-              name="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name, email, code..."
-              className="sm:max-w-xs"
-            />
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="input"
-            >
-              <option value="">All Statuses</option>
-              <option value="ACTIVE">Active</option>
-              <option value="INACTIVE">Inactive</option>
-            </select>
-            <select
-              value={filterDepartment}
-              onChange={(e) => setFilterDepartment(e.target.value)}
-              className="input"
-            >
-              <option value="">All Departments</option>
-              {departments.map((dept) => (
-                <option key={dept.department_id} value={dept.department_id}>
-                  {dept.name}
-                </option>
-              ))}
-            </select>
-            <Input
-              label="Joining Date From"
-              name="joining_date_from"
-              type="date"
-              value={joiningDateFrom}
-              onChange={(e) => setJoiningDateFrom(e.target.value)}
-              className="sm:max-w-xs"
-            />
-            <Input
-              label="Joining Date To"
-              name="joining_date_to"
-              type="date"
-              value={joiningDateTo}
-              onChange={(e) => setJoiningDateTo(e.target.value)}
-              className="sm:max-w-xs"
-            />
-            <button
-              onClick={resetFilters}
-              className="btn-ghost rounded-lg px-4 py-2 text-sm font-medium"
-            >
-              Clear Filters
-            </button>
-          </div>
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+        <Input
+          label="Search"
+          name="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by name, email, code..."
+          className="sm:max-w-xs"
+        />
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+          className="input"
+        >
+          <option value="">All Statuses</option>
+          <option value="ACTIVE">Active</option>
+          <option value="INACTIVE">Inactive</option>
+        </select>
+        <select
+          value={filterDepartment}
+          onChange={(e) => setFilterDepartment(e.target.value)}
+          className="input"
+        >
+          <option value="">All Departments</option>
+          {departments.map((dept) => (
+            <option key={dept.department_id} value={dept.department_id}>
+              {dept.name}
+            </option>
+          ))}
+        </select>
+        <Input
+          label="Joining Date From"
+          name="joining_date_from"
+          type="date"
+          value={joiningDateFrom}
+          onChange={(e) => setJoiningDateFrom(e.target.value)}
+          className="sm:max-w-xs"
+        />
+        <Input
+          label="Joining Date To"
+          name="joining_date_to"
+          type="date"
+          value={joiningDateTo}
+          onChange={(e) => setJoiningDateTo(e.target.value)}
+          className="sm:max-w-xs"
+        />
+        <button
+          onClick={resetFilters}
+          className="btn-ghost rounded-lg px-4 py-2 text-sm font-medium"
+        >
+          Clear Filters
+        </button>
+      </div>
 
       {loading && employees.length === 0 ? (
         <Loader />
@@ -350,22 +342,12 @@ export function EmployeesPage() {
         </div>
       )}
 
-      {total_pages > 1 && (
+      {totalPages > 1 && (
         <Pagination
           page={page}
-          totalPages={total_pages}
-          totalRecords={total_records}
-          onPageChange={(nextPage) =>
-            list({
-              search: search || undefined,
-              status: filterStatus || undefined,
-              department_id: filterDepartment || undefined,
-              joining_date_from: joiningDateFrom || undefined,
-              joining_date_to: joiningDateTo || undefined,
-              page: nextPage,
-              page_size: page_size,
-            })
-          }
+          totalPages={totalPages}
+          totalRecords={totalRecords}
+          onPageChange={(nextPage) => loadEmployees(nextPage)}
         />
       )}
 

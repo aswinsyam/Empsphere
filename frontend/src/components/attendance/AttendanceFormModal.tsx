@@ -1,7 +1,8 @@
 /**
  * AttendanceFormModal.
  *
- * Reusable modal for marking attendance.
+ * Reusable modal for creating or editing an attendance record.
+ * Used by the AttendancePage.
  */
 
 import { Modal } from "@/components/common/Modal";
@@ -9,19 +10,22 @@ import { Button } from "@/components/common/Button";
 import { Input } from "@/components/common/Input";
 import { Employee } from "@/types/employee";
 
+export interface AttendanceFormValues {
+  date: string;
+  status: string;
+  check_in: string;
+  check_out: string;
+  remarks: string;
+}
+
 interface AttendanceFormModalProps {
   open: boolean;
   submitting: boolean;
   formError: string | null;
   employees: Employee[];
   selectedEmployee: string;
-  form: {
-    date: string;
-    status: string;
-    check_in: string;
-    check_out: string;
-    remarks: string;
-  };
+  form: AttendanceFormValues;
+  mode?: "create" | "edit";
   onClose: () => void;
   onSubmit: (e: React.FormEvent) => void;
   onFormChange: (field: string, value: string) => void;
@@ -35,13 +39,17 @@ export function AttendanceFormModal({
   employees,
   selectedEmployee,
   form,
+  mode = "create",
   onClose,
   onSubmit,
   onFormChange,
   onEmployeeChange,
 }: AttendanceFormModalProps) {
+  const title = mode === "edit" ? "Edit Attendance" : "Mark Attendance";
+  const submitLabel = mode === "edit" ? "Save Changes" : "Mark Attendance";
+
   return (
-    <Modal open={open} title="Mark Attendance" onClose={onClose}>
+    <Modal open={open} title={title} onClose={onClose}>
       <form onSubmit={onSubmit} className="space-y-4">
         {formError ? (
           <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{formError}</div>
@@ -58,6 +66,7 @@ export function AttendanceFormModal({
             onChange={(e) => onEmployeeChange(e.target.value)}
             className="input"
             required
+            disabled={mode === "edit"}
           >
             <option value="">Select employee</option>
             {employees.map((emp: Employee) => (
@@ -123,7 +132,7 @@ export function AttendanceFormModal({
             Cancel
           </Button>
           <Button type="submit" loading={submitting}>
-            Mark Attendance
+            {submitLabel}
           </Button>
         </div>
       </form>

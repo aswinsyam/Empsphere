@@ -16,8 +16,8 @@ export type RoleKey = (typeof ROLES)[keyof typeof ROLES];
  * Roles allowed to access the Employee Management module
  * (list, detail, create, edit).
  *
- * Mirrors the backend `@require_role(*EMPLOYEE_MANAGER_ROLES)` rule on
- * `EmployeeController`. EMPLOYEE is intentionally excluded. Single source of
+ * Mirrors the backend `@require_role("SUPER_ADMIN", "ADMIN", "HR_MANAGER")` rule
+ * on the employee views. EMPLOYEE is intentionally excluded. Single source of
  * truth for both route guards (`RequireRole`) and in-page action visibility,
  * so the rule is never duplicated.
  */

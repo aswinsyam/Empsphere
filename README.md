@@ -1,6 +1,6 @@
 # EmpSphere
 
-Full-stack Employee Management System with role-based access control, attendance tracking, leave management, and office payment processing via Cashfree.
+Full-stack Employee Management System with role-based access control, attendance tracking, leave management, and office payment processing via Razorpay.
 
 ## Features
 
@@ -9,7 +9,7 @@ Full-stack Employee Management System with role-based access control, attendance
 - Employee and department management
 - Attendance check-in / check-out
 - Leave application and approval workflow
-- Office amenity payments via Cashfree Sandbox
+- Office amenity payments via Razorpay (Test Mode)
 - Activity logging and audit trails
 - Role-specific dashboard and reports
 
@@ -18,12 +18,7 @@ Full-stack Employee Management System with role-based access control, attendance
 **Backend:** Django 4.2, Django REST Framework, PyMongo, PyJWT, python-dotenv  
 **Frontend:** React 18, TypeScript, Vite 5, Redux Toolkit, Tailwind CSS, Axios  
 **Database:** MongoDB (business data), SQLite in-memory (Django internal tables)  
-**Payments:** Cashfree
-
-## Architecture
-
-**Backend:** HTTP Request → Controller → Service → Repository → MongoDB  
-**Frontend:** Page → Hook → Redux Slice → Service → Axios → Backend API
+**Payments:** Razorpay (Test Mode) — only payment gateway, no gateway selector
 
 ## Quick Start
 
@@ -33,7 +28,7 @@ cd backend
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-# Create backend/.env (see docs/PROJECT_GUIDE.md §18)
+# Create backend/.env (see docs/PROJECT_GUIDE.md)
 .\venv\Scripts\python.exe manage.py seed_rbac
 .\venv\Scripts\python.exe manage.py seed_amenities
 .\venv\Scripts\python.exe manage.py runserver
@@ -48,23 +43,17 @@ npm run dev
 - Frontend: `http://localhost:3000`
 - Backend API: `http://localhost:8000`
 
-## Environment Setup
+## Verify
 
-All `.env` files are gitignored. The repository has no committed `.env`.
+```powershell
+cd backend
+.\venv\Scripts\python.exe manage.py check
 
-- **Backend:** `backend/.env` — secrets, MongoDB URI, email SMTP, Cashfree credentials.
-- **Frontend:** `frontend/.env` — API base URL, Google OAuth client ID.
-
-Copy `frontend/.env.example` to `frontend/.env` and fill in the values.
-
-## Cashfree Sandbox
-
-Payments run in **SANDBOX** mode by default (`CASHFREE_ENVIRONMENT=SANDBOX` in `backend/.env`). Get sandbox test credentials from the Cashfree Dashboard → Sandbox → API Credentials. Switch `CASHFREE_ENVIRONMENT` to `PRODUCTION` only when deploying live.
-
-> **Important:** `CASHFREE_SECRET_KEY` is backend-only. Never place it in frontend code, README, or logs.
+cd ..\frontend
+npx tsc --noEmit
+npm run build
+```
 
 ## Documentation
 
-| Document | Description |
-|----------|-------------|
-| [docs/PROJECT_GUIDE.md](docs/PROJECT_GUIDE.md) | Complete project guide for beginners |
+See [docs/PROJECT_GUIDE.md](docs/PROJECT_GUIDE.md) for a beginner-friendly walkthrough of the entire system.

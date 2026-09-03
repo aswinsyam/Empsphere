@@ -15,7 +15,7 @@ import {
 
 export const paymentService = {
   async create(payload: CreatePaymentPayload): Promise<PaymentOrderResponse> {
-    const response = await http.post<PaymentOrderResponse>("/payment/", payload);
+    const response = await http.post<PaymentOrderResponse>("/payments/", payload);
     return response;
   },
 
@@ -28,7 +28,7 @@ export const paymentService = {
     page?: number;
     page_size?: number;
   }): Promise<PaymentListResponse> {
-    const response = await http.get<PaymentListResponse>("/payment/", { params });
+    const response = await http.get<PaymentListResponse>("/payments/", { params });
     return response;
   },
 
@@ -37,14 +37,14 @@ export const paymentService = {
     payload: VerifyPaymentPayload
   ): Promise<Payment> {
     const response = await http.post<Payment>(
-      `/payment/${paymentId}/verify/`,
+      `/payments/${paymentId}/verify/`,
       payload
     );
     return response;
   },
 
   async cancel(paymentId: string): Promise<Payment> {
-    const response = await http.post<Payment>(`/payment/${paymentId}/cancel/`);
+    const response = await http.post<Payment>(`/payments/${paymentId}/cancel/`);
     return response;
   },
 
@@ -54,7 +54,7 @@ export const paymentService = {
     page?: number;
     page_size?: number;
   }): Promise<PaymentListResponse> {
-    const response = await http.get<PaymentListResponse>("/payment/me/", {
+    const response = await http.get<PaymentListResponse>("/payments/me/", {
       params,
     });
     return response;
@@ -62,7 +62,7 @@ export const paymentService = {
 
   async getAmenities(): Promise<Amenity[]> {
     const response = await http.get<{ amenities: Amenity[] }>(
-      "/payment/amenities/"
+      "/payments/amenities/"
     );
     return response.amenities;
   },

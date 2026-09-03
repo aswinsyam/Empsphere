@@ -2,12 +2,11 @@
  * DesignationsPage.
  *
  * Allows authorized users to manage designations.
- * Restricted to SUPER_ADMIN, ADMIN, and HR_MANAGER roles.
  */
 
 import { useEffect, useState } from "react";
-import { useDesignations } from "@/hooks/useDesignations";
 import { useAuth } from "@/hooks/useAuth";
+import { designationService } from "@/services/designation.service";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/common/Button";
 import { Input } from "@/components/common/Input";
@@ -27,31 +26,46 @@ const EMPTY_FORM = {
 
 export function DesignationsPage() {
   const { user } = useAuth();
-  const {
-    designations,
-    total_records,
-    total_pages,
-    page,
-    page_size,
-    loading,
-    error,
-    list,
-    create,
-    update,
-  } = useDesignations();
-
   const canManage = canManageEmployees(user?.role);
+
+  const [designations, setDesignations] = useState<Designation[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [search, setSearch] = useState("");
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Designation | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
+
+  const loadDesignations = async (pageNum = 1) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await designationService.list({
+        search: search || undefined,
+        page: pageNum,
+        page_size: 10,
+        include_inactive: true,
+      });
+      setDesignations(result.designations);
+      setPage(result.page);
+      setTotalPages(result.total_pages);
+      setTotalRecords(result.total_records);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load designations");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    list({ search: search || undefined, page: 1, page_size: 10, include_inactive: true });
-  }, [search, list]);
+    loadDesignations(1);
+  }, [search]);
 
   const openCreate = () => {
     setEditing(null);
@@ -77,14 +91,14 @@ export function DesignationsPage() {
     setSubmitting(true);
     try {
       if (editing) {
-        await update(editing.designation_id, {
+        await designationService.update(editing.designation_id, {
           name: form.name,
           code: form.code,
           description: form.description,
         });
         toastSuccess("Designation updated successfully.");
       } else {
-        await create({
+        await designationService.create({
           name: form.name,
           code: form.code,
           description: form.description,
@@ -92,12 +106,9 @@ export function DesignationsPage() {
         toastSuccess("Designation created successfully.");
       }
       setModalOpen(false);
-      list({ search: search || undefined, page: 1, page_size: 10, include_inactive: true });
+      await loadDesignations(1);
     } catch (err) {
-      const message =
-        err && typeof err === "object" && "message" in err
-          ? String((err as { message: string }).message)
-          : "Something went wrong.";
+      const message = err instanceof Error ? err.message : "Something went wrong.";
       setFormError(message);
       toastApiError(err, editing ? "Failed to update designation" : "Failed to create designation");
     } finally {
@@ -182,19 +193,12 @@ export function DesignationsPage() {
         </div>
       )}
 
-      {total_pages > 1 && (
+      {totalPages > 1 && (
         <Pagination
           page={page}
-          totalPages={total_pages}
-          totalRecords={total_records}
-          onPageChange={(nextPage) =>
-            list({
-              search: search || undefined,
-              page: nextPage,
-              page_size,
-              include_inactive: true,
-            })
-          }
+          totalPages={totalPages}
+          totalRecords={totalRecords}
+          onPageChange={(nextPage) => loadDesignations(nextPage)}
         />
       )}
 

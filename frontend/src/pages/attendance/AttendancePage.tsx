@@ -2,44 +2,62 @@
  * AttendancePage.
  *
  * Role-aware attendance management page.
- *
- * - EMPLOYEE: simple check-in/check-out + own history.
- * - HR_MANAGER / ADMIN / SUPER_ADMIN: manage attendance for all employees.
  */
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useAttendance } from "@/hooks/useAttendance";
-import { useEmployees } from "@/hooks/useEmployees";
 import { useAuth } from "@/hooks/useAuth";
+import { attendanceService } from "@/services/attendance.service";
+import { employeeService } from "@/services/employee.service";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/common/Button";
 import { Input } from "@/components/common/Input";
 import { Loader } from "@/components/common/Loader";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { Pagination } from "@/components/common/Pagination";
-import { AttendanceFormModal } from "@/components/attendance/AttendanceFormModal";
+import {
+  AttendanceFormModal,
+  AttendanceFormValues,
+} from "@/components/attendance/AttendanceFormModal";
 import { formatDate } from "@/utils/helpers";
 import { Employee } from "@/types/employee";
 import { ROLES } from "@/utils/constants";
+import { toastApiError, toastSuccess } from "@/components/common/ToastProvider";
+
+const EMPTY_FORM: AttendanceFormValues = {
+  date: new Date().toISOString().split("T")[0],
+  status: "PRESENT",
+  check_in: "",
+  check_out: "",
+  remarks: "",
+};
+
+/** Convert an ISO datetime (or "YYYY-MM-DDTHH:MM:SS") into "HH:MM". */
+function toTimeInput(value?: string | null): string {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
+/** Convert "YYYY-MM-DD" + "HH:MM" into an ISO datetime string for the API. */
+function toIsoFromForm(date: string, time: string): string | undefined {
+  if (!date || !time) return undefined;
+  return `${date}T${time}:00`;
+}
 
 export function AttendancePage() {
-  const {
-    records,
-    summary,
-    loading,
-    error,
-    page,
-    total_records,
-    total_pages,
-    list,
-    mark,
-    update,
-    loadSummary,
-    checkIn,
-    checkOut,
-  } = useAttendance();
   const { user } = useAuth();
-  const { employees, list: listEmployees } = useEmployees();
+
+  const [records, setRecords] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [summary, setSummary] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalRecords, setTotalRecords] = useState(0);
 
   const isEmployee = user?.role === ROLES.EMPLOYEE;
   const canManage = user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.ADMIN || user?.role === ROLES.HR_MANAGER;
@@ -51,15 +69,12 @@ export function AttendancePage() {
   const [filterStatus, setFilterStatus] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
-  const [markModalOpen, setMarkModalOpen] = useState(false);
-  const [markForm, setMarkForm] = useState({
-    date: new Date().toISOString().split("T")[0],
-    status: "PRESENT",
-    check_in: "",
-    check_out: "",
-    remarks: "",
-  });
+
+  // Modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<"create" | "edit">("create");
+  const [editingAttendanceId, setEditingAttendanceId] = useState<string | null>(null);
+  const [form, setForm] = useState<AttendanceFormValues>({ ...EMPTY_FORM });
   const initialLoadDone = useRef(false);
 
   useEffect(() => {
@@ -73,38 +88,43 @@ export function AttendancePage() {
 
   const loadData = useCallback(
     (pageNum = 1) => {
-      list({
+      setLoading(true);
+      setError(null);
+      attendanceService.list({
         employee_id: isEmployee ? user?._id : (selectedEmployee || undefined),
         start_date: startDate || undefined,
         end_date: endDate || undefined,
         status: filterStatus || undefined,
         page: pageNum,
         page_size: 10,
+      }).then((result) => {
+        setRecords(result.attendance);
+        setPage(result.page);
+        setTotalPages(result.total_pages);
+        setTotalRecords(result.total_records);
+        setLoading(false);
+      }).catch((err) => {
+        setError(err instanceof Error ? err.message : "Failed to load attendance");
+        setLoading(false);
       });
     },
-    [isEmployee, user?._id, selectedEmployee, startDate, endDate, filterStatus, list]
+    [isEmployee, user?._id, selectedEmployee, startDate, endDate, filterStatus]
   );
 
   useEffect(() => {
-    listEmployees({ page_size: 1000 });
-  }, [listEmployees]);
+    employeeService.list({ page_size: 1000 }).then((r) => setEmployees(r.employees));
+  }, []);
 
   useEffect(() => {
     loadData(1);
   }, [selectedEmployee, startDate, endDate, isEmployee, user?._id, loadData]);
 
   useEffect(() => {
-    if (showMyAttendance && user?._id) {
-      loadSummary({ employee_id: user._id });
-    } else if (!showMyAttendance && selectedEmployee) {
-      loadSummary({ employee_id: selectedEmployee });
-    } else if (!showMyAttendance && !selectedEmployee && records.length > 0) {
-      const firstEmp = records[0]?.employee_id;
-      if (firstEmp) {
-        loadSummary({ employee_id: firstEmp });
-      }
+    const empId = (isEmployee || canManage) ? user?._id : (selectedEmployee || (records[0]?.employee_id));
+    if (empId) {
+      attendanceService.summary(empId).then(setSummary).catch(() => {});
     }
-  }, [showMyAttendance, user?._id, selectedEmployee, records, loadSummary]);
+  }, [showMyAttendance, user?._id, selectedEmployee, records, isEmployee, canManage]);
 
   const getTodayRecord = () => {
     if (!user?._id) return null;
@@ -115,23 +135,18 @@ export function AttendancePage() {
   const todayRecord = getTodayRecord();
   const hasCheckedIn = Boolean(todayRecord?.check_in);
   const hasCheckedOut = Boolean(todayRecord?.check_out);
-  const canCheckIn = showMyAttendance && !hasCheckedIn;
-  const canCheckOut = showMyAttendance && hasCheckedIn && !hasCheckedOut;
+  const canCheckIn = (isEmployee || canManage) && !hasCheckedIn;
+  const canCheckOut = (isEmployee || canManage) && hasCheckedIn && !hasCheckedOut;
 
   const handleCheckIn = async () => {
     setActionError(null);
-    setActionSuccess(null);
     setSubmitting(true);
     try {
-      await checkIn();
-      setActionSuccess("Checked in successfully.");
+      await attendanceService.checkIn();
+      toastSuccess("Checked in successfully.");
       loadData(1);
     } catch (err) {
-      setActionError(
-        err && typeof err === "object" && "message" in err
-          ? String((err as { message: string }).message)
-          : "Failed to check in."
-      );
+      setActionError(err instanceof Error ? err.message : "Failed to check in.");
     } finally {
       setSubmitting(false);
     }
@@ -139,18 +154,13 @@ export function AttendancePage() {
 
   const handleCheckOut = async () => {
     setActionError(null);
-    setActionSuccess(null);
     setSubmitting(true);
     try {
-      await checkOut();
-      setActionSuccess("Checked out successfully.");
+      await attendanceService.checkOut();
+      toastSuccess("Checked out successfully.");
       loadData(1);
     } catch (err) {
-      setActionError(
-        err && typeof err === "object" && "message" in err
-          ? String((err as { message: string }).message)
-          : "Failed to check out."
-      );
+      setActionError(err instanceof Error ? err.message : "Failed to check out.");
     } finally {
       setSubmitting(false);
     }
@@ -171,35 +181,87 @@ export function AttendancePage() {
     setFilterStatus("");
   };
 
-  const handleMark = async (payload: { employee_id?: string; date: string; status?: string; check_in?: string; check_out?: string; remarks?: string }) => {
-    setSubmitting(true);
-    try {
-      await mark(payload);
-      setActionSuccess("Attendance marked successfully.");
-      setMarkModalOpen(false);
-      loadData(1);
-    } catch (err) {
-      setActionError(
-        err && typeof err === "object" && "message" in err
-          ? String((err as { message: string }).message)
-          : "Something went wrong."
-      );
-    } finally {
-      setSubmitting(false);
-    }
+  const openCreateModal = () => {
+    setActionError(null);
+    setModalMode("create");
+    setEditingAttendanceId(null);
+    setForm({
+      ...EMPTY_FORM,
+      date: new Date().toISOString().split("T")[0],
+    });
+    setModalOpen(true);
   };
 
-  const handleUpdate = async (id: string, payload: { status?: string; check_in?: string; check_out?: string; remarks?: string }) => {
+  const openEditModal = (record: any) => {
+    setActionError(null);
+    setModalMode("edit");
+    setEditingAttendanceId(record.attendance_id);
+    setSelectedEmployee(record.employee_id);
+    setForm({
+      date: record.date || "",
+      status: record.status || "PRESENT",
+      check_in: toTimeInput(record.check_in),
+      check_out: toTimeInput(record.check_out),
+      remarks: record.remarks || "",
+    });
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setEditingAttendanceId(null);
+    setActionError(null);
+  };
+
+  const handleSubmitModal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setActionError(null);
+
+    if (!selectedEmployee) {
+      setActionError("Select an employee before saving attendance.");
+      return;
+    }
+    if (!form.date) {
+      setActionError("Date is required.");
+      return;
+    }
+    if (form.check_in && form.check_out && form.check_in >= form.check_out) {
+      setActionError("Check-out time must be after check-in time.");
+      return;
+    }
+
+    const checkInIso = toIsoFromForm(form.date, form.check_in);
+    const checkOutIso = toIsoFromForm(form.date, form.check_out);
+
     setSubmitting(true);
     try {
-      await update(id, payload);
+      if (modalMode === "edit" && editingAttendanceId) {
+        // Existing record: use PUT to update
+        await attendanceService.update(editingAttendanceId, {
+          status: form.status,
+          check_in: checkInIso,
+          check_out: checkOutIso,
+          remarks: form.remarks || undefined,
+        });
+        toastSuccess("Attendance updated successfully.");
+      } else {
+        // New record (or upsert by manager) — POST /attendance/ handles both
+        await attendanceService.mark({
+          employee_id: selectedEmployee,
+          date: form.date,
+          status: form.status,
+          check_in: checkInIso,
+          check_out: checkOutIso,
+          remarks: form.remarks || undefined,
+        });
+        toastSuccess("Attendance saved successfully.");
+      }
+      closeModal();
       loadData(1);
     } catch (err) {
-      setActionError(
-        err && typeof err === "object" && "message" in err
-          ? String((err as { message: string }).message)
-          : "Something went wrong."
-      );
+      const msg = err instanceof Error ? err.message : "Something went wrong.";
+      setActionError(msg);
+      toastApiError(err, "Failed to save attendance");
     } finally {
       setSubmitting(false);
     }
@@ -216,7 +278,7 @@ export function AttendancePage() {
         }
         actions={
           !isEmployee ? (
-            <Button onClick={() => setMarkModalOpen(true)}>Mark Attendance</Button>
+            <Button onClick={openCreateModal}>Mark Attendance</Button>
           ) : undefined
         }
       />
@@ -224,11 +286,8 @@ export function AttendancePage() {
       {(error || actionError) && (
         <div className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-700">{error || actionError}</div>
       )}
-      {actionSuccess && (
-        <div className="mb-4 rounded-lg bg-green-50 p-4 text-sm text-green-700">{actionSuccess}</div>
-      )}
 
-      {showMyAttendance && (
+      {(isEmployee || canManage) && (
         <div className="mb-6 card p-6">
           <h2 className="mb-4 text-lg font-semibold text-slate-900">Today&apos;s Attendance</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -327,7 +386,7 @@ export function AttendancePage() {
         </div>
       )}
 
-      {summary && showMyAttendance && (
+      {summary && (isEmployee || canManage) && (
         <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-5">
           <div className="card p-4 text-center">
             <p className="text-xs uppercase tracking-wide text-slate-400">Total Days</p>
@@ -395,12 +454,7 @@ export function AttendancePage() {
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
                         <button
-                          onClick={() => handleUpdate(record.attendance_id, {
-                            status: record.status,
-                            check_in: record.check_in,
-                            check_out: record.check_out,
-                            remarks: record.remarks,
-                          })}
+                          onClick={() => openEditModal(record)}
                           className="rounded border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
                         >
                           Edit
@@ -415,41 +469,26 @@ export function AttendancePage() {
         </div>
       )}
 
-      {total_pages > 1 && (
+      {totalPages > 1 && (
         <Pagination
           page={page}
-          totalPages={total_pages}
-          totalRecords={total_records}
+          totalPages={totalPages}
+          totalRecords={totalRecords}
           onPageChange={(nextPage) => loadData(nextPage)}
         />
       )}
 
       <AttendanceFormModal
-        open={markModalOpen}
+        open={modalOpen}
         submitting={submitting}
         formError={actionError}
         employees={activeEmployees}
         selectedEmployee={selectedEmployee}
-        form={markForm}
-        onClose={() => setMarkModalOpen(false)}
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!selectedEmployee) {
-            setActionError("Select an employee before marking attendance.");
-            return;
-          }
-          const checkInTime = markForm.check_in ? `${markForm.date}T${markForm.check_in}:00` : undefined;
-          const checkOutTime = markForm.check_out ? `${markForm.date}T${markForm.check_out}:00` : undefined;
-          handleMark({
-            employee_id: selectedEmployee,
-            date: markForm.date,
-            status: markForm.status,
-            check_in: checkInTime,
-            check_out: checkOutTime,
-            remarks: markForm.remarks || undefined,
-          });
-        }}
-        onFormChange={(field, value) => setMarkForm({ ...markForm, [field]: value })}
+        form={form}
+        mode={modalMode}
+        onClose={closeModal}
+        onSubmit={handleSubmitModal}
+        onFormChange={(field, value) => setForm({ ...form, [field]: value })}
         onEmployeeChange={(value) => setSelectedEmployee(value)}
       />
     </div>

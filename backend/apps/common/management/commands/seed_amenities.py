@@ -7,13 +7,15 @@ For production, use real amounts via the admin panel or update this seed command
 Usage:
     python manage.py seed_amenities
 """
+from datetime import datetime
+
 from django.core.management.base import BaseCommand
 
-from apps.common.core.collections import Collections
-from apps.common.database.mongo import mongo
+from apps.common.constants import Collections
+from apps.common.database import mongo
 
 
-# TEST MODE AMOUNTS - Very small values for testing Cashfree Sandbox
+# TEST MODE AMOUNTS - Very small values for testing Razorpay Test Mode
 # TODO: Replace with real amounts for production
 DEFAULT_AMENITIES = [
     {
@@ -55,7 +57,7 @@ class Command(BaseCommand):
     help = "Seed default office amenities for payment processing (TEST MODE amounts)."
 
     def handle(self, *args, **options):
-        collection = mongo.get_collection(Collections.AMENITIES)
+        collection = mongo[Collections.AMENITIES]
 
         seeded_count = 0
         skipped_count = 0
@@ -80,8 +82,6 @@ class Command(BaseCommand):
                         self.style.WARNING("Skipped (exists): %s" % amenity["name"])
                     )
                 continue
-
-            from datetime import datetime
 
             collection.insert_one({
                 "name": amenity["name"],

@@ -15,7 +15,7 @@ export const designationService = {
     page_size?: number;
     include_inactive?: boolean;
   }): Promise<DesignationListResponse> {
-    return http.get<DesignationListResponse>("/organization/designations/", params);
+    return http.get<DesignationListResponse>("/designations/", params);
   },
 
   /** Create a new designation. */
@@ -24,7 +24,7 @@ export const designationService = {
     code?: string;
     description?: string;
   }): Promise<Designation> {
-    return http.post<Designation>("/organization/designations/", payload);
+    return http.post<Designation>("/designations/", payload);
   },
 
   /** Update a designation. */
@@ -37,6 +37,6 @@ export const designationService = {
       is_active?: boolean;
     }
   ): Promise<Designation> {
-    return http.put<Designation>(`/organization/designations/${id}/`, payload);
+    return http.put<Designation>(`/designations/${id}/`, payload);
   },
 };

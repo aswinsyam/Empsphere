@@ -1,61 +1,40 @@
-/**
- * useDashboardData hook.
- *
- * Shared data-loading logic for all role dashboards.
- * Loads statistics and recent activity, handling cancellation
- * and error states consistently.
- */
+import { useState, useCallback, useEffect } from "react";
 
-import { useEffect, useState } from "react";
-import { StatItem, ActivityItem } from "@/types/dashboard";
-
-export interface UseDashboardDataOptions {
-  /** Function that returns the stats array for this role. */
-  loadStats: () => Promise<StatItem[]>;
-  /** Function that returns the activities array for this role. */
-  loadActivities: () => Promise<ActivityItem[]>;
-}
-
-export function useDashboardData(options: UseDashboardDataOptions) {
-  const { loadStats, loadActivities } = options;
-  const [stats, setStats] = useState<StatItem[]>([]);
-  const [activities, setActivities] = useState<ActivityItem[]>([]);
+export function useDashboardData<TStats, TActivities>(options: {
+  loadStats: () => Promise<TStats>;
+  loadActivities: () => Promise<TActivities>;
+}) {
+  const [stats, setStats] = useState<TStats | null>(null);
+  const [activities, setActivities] = useState<TActivities | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const [statsData, activitiesData] = await Promise.all([
-          loadStats(),
-          loadActivities(),
-        ]);
-        if (!cancelled) {
-          setStats(statsData);
-          setActivities(activitiesData);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError("Failed to load dashboard data.");
-          setActivities([{ title: "Failed to load dashboard data.", time: "" }]);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [statsData, activitiesData] = await Promise.all([
+        options.loadStats(),
+        options.loadActivities(),
+      ]);
+      setStats(statsData);
+      setActivities(activitiesData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load dashboard data.");
+    } finally {
+      setLoading(false);
     }
+  }, [options]);
 
-    load();
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [loadStats, loadActivities]);
-
-  return { stats, activities, loading, error };
+  return {
+    stats: stats ?? ({} as TStats),
+    activities: activities ?? ([] as TActivities),
+    loading,
+    error,
+    refresh,
+  };
 }

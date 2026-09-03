@@ -1,96 +1,105 @@
 /**
  * LeavesPage.
  *
- * Role-aware leave management page.
- *
- * - EMPLOYEE: self-service leave (apply, view own history).
- * - HR_MANAGER / ADMIN / SUPER_ADMIN: manage leave for all employees.
+ * Leave management page — employees apply for leave; managers approve/reject.
  */
 
-import { useEffect, useState, useCallback, useRef } from "react";
-import { useLeaves } from "@/hooks/useLeaves";
-import { useEmployees } from "@/hooks/useEmployees";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { leaveService } from "@/services/leave.service";
+import { employeeService } from "@/services/employee.service";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/common/Button";
 import { Input } from "@/components/common/Input";
-import { Modal } from "@/components/common/Modal";
 import { Loader } from "@/components/common/Loader";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { Pagination } from "@/components/common/Pagination";
-import { formatDate } from "@/utils/helpers";
-import { LeaveRecord } from "@/types/leave";
+import { Modal } from "@/components/common/Modal";
 import { Employee } from "@/types/employee";
 import { ROLES } from "@/utils/constants";
 import { toastSuccess, toastApiError } from "@/components/common/ToastProvider";
-import { leaveService } from "@/services/leave.service";
-import { exportObjectsToCsv } from "@/utils/exportCsv";
-
-const EMPTY_FORM = {
-  employee_id: "",
-  start_date: "",
-  end_date: "",
-  leave_type: "ANNUAL",
-  reason: "",
-};
 
 export function LeavesPage() {
   const { user } = useAuth();
-  const { leaves, total_records, total_pages, page, loading, error, list, apply, updateStatus } = useLeaves();
-  const { employees, list: listEmployees } = useEmployees();
+
+  const [leaves, setLeaves] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageSize] = useState(10);
 
   const isEmployee = user?.role === ROLES.EMPLOYEE;
   const canManage = user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.ADMIN || user?.role === ROLES.HR_MANAGER;
-  const initialLoadDone = useRef(false);
 
-  useEffect(() => {
-    if (canManage && user?._id && !initialLoadDone.current) {
-      setSelectedEmployee(user._id);
-      initialLoadDone.current = true;
-    }
-  }, [canManage, user?._id]);
-
-  useEffect(() => {
-    listEmployees({ page_size: 1000 });
-  }, [listEmployees]);
+  const [filterStatus, setFilterStatus] = useState("");
+  const [filterLeaveType, setFilterLeaveType] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [selectedEmployee, setSelectedEmployee] = useState("");
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState({
+    employee_id: "",
+    start_date: "",
+    end_date: "",
+    leave_type: "ANNUAL",
+    reason: "",
+  });
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [selectedEmployee, setSelectedEmployee] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [leaveTypeFilter, setLeaveTypeFilter] = useState("");
-  const [startDateFilter, setStartDateFilter] = useState("");
-  const [endDateFilter, setEndDateFilter] = useState("");
-  const [confirmAction, setConfirmAction] = useState<{ leave: LeaveRecord; action: "APPROVED" | "REJECTED" } | null>(null);
-  const [actionLoading, setActionLoading] = useState(false);
 
-  const activeEmployees = employees.filter((e) => e.is_active ?? true);
+  // Decision (Approve/Reject) modal state
+  const [decisionModalOpen, setDecisionModalOpen] = useState(false);
+  const [decisionType, setDecisionType] = useState<"APPROVED" | "REJECTED">("APPROVED");
+  const [decisionTarget, setDecisionTarget] = useState<any | null>(null);
+  const [decisionReason, setDecisionReason] = useState("");
+  const [decisionError, setDecisionError] = useState<string | null>(null);
+  const [decisionSubmitting, setDecisionSubmitting] = useState(false);
 
-  const loadData = useCallback(
-    (pageNum = 1) => {
-      list({
+  const loadLeaves = async (pageNum = 1) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await leaveService.list({
         employee_id: isEmployee ? user?._id : (selectedEmployee || undefined),
-        status: statusFilter || undefined,
-        leave_type: leaveTypeFilter || undefined,
-        start_date: startDateFilter || undefined,
-        end_date: endDateFilter || undefined,
+        status: filterStatus || undefined,
+        leave_type: filterLeaveType || undefined,
+        start_date: startDate || undefined,
+        end_date: endDate || undefined,
         page: pageNum,
-        page_size: 10,
+        page_size: pageSize,
       });
-    },
-    [isEmployee, user?._id, selectedEmployee, statusFilter, leaveTypeFilter, startDateFilter, endDateFilter, list]
-  );
+      setLeaves(result.leaves);
+      setPage(result.page);
+      setTotalPages(result.total_pages);
+      setTotalRecords(result.total_records);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load leaves");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    loadData(1);
-  }, [selectedEmployee, statusFilter, leaveTypeFilter, startDateFilter, endDateFilter, isEmployee, user?._id, loadData]);
+    if (canManage) {
+      employeeService.list({ page_size: 1000 }).then((r) => setEmployees(r.employees));
+    }
+  }, [canManage]);
 
-  const openCreate = () => {
+  useEffect(() => {
+    loadLeaves(1);
+  }, [selectedEmployee, filterStatus, filterLeaveType, startDate, endDate, isEmployee]);
+
+  const openApply = () => {
     setForm({
-      ...EMPTY_FORM,
-      employee_id: isEmployee ? (user?._id || "") : (selectedEmployee || ""),
+      employee_id: isEmployee ? (user?._id || "") : "",
+      start_date: "",
+      end_date: "",
+      leave_type: "ANNUAL",
+      reason: "",
     });
     setFormError(null);
     setModalOpen(true);
@@ -101,99 +110,80 @@ export function LeavesPage() {
     setFormError(null);
     setSubmitting(true);
     try {
-      await apply({
-        employee_id: isEmployee ? user?._id : form.employee_id,
+      await leaveService.apply({
+        employee_id: form.employee_id || user?._id || "",
         start_date: form.start_date,
         end_date: form.end_date,
         leave_type: form.leave_type,
-        reason: form.reason,
+        reason: form.reason || undefined,
       });
-      setModalOpen(false);
       toastSuccess("Leave applied successfully.");
-      loadData(1);
+      setModalOpen(false);
+      await loadLeaves(1);
     } catch (err) {
-      const message = err && typeof err === "object" && "message" in err
-        ? String((err as { message: string }).message)
-        : "Something went wrong.";
-      setFormError(message);
-      toastApiError(err, "Failed to apply leave");
+      setFormError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleConfirmAction = async () => {
-    if (!confirmAction) return;
-    setActionLoading(true);
-    try {
-      await updateStatus(confirmAction.leave.leave_id, confirmAction.action);
-      toastSuccess(`Leave ${confirmAction.action.toLowerCase()} successfully.`);
-      setConfirmAction(null);
-      loadData(page);
-    } catch (err) {
-      toastApiError(err, `Failed to ${confirmAction.action.toLowerCase()} leave`);
-    } finally {
-      setActionLoading(false);
-    }
+  const openDecisionModal = (leave: any, type: "APPROVED" | "REJECTED") => {
+    setDecisionTarget(leave);
+    setDecisionType(type);
+    setDecisionReason("");
+    setDecisionError(null);
+    setDecisionModalOpen(true);
   };
 
-  const handleExport = async () => {
-    try {
-      const res = await leaveService.list({
-        employee_id: isEmployee ? user?._id : (selectedEmployee || undefined),
-        status: statusFilter || undefined,
-        leave_type: leaveTypeFilter || undefined,
-        start_date: startDateFilter || undefined,
-        end_date: endDateFilter || undefined,
-        page: 1,
-        page_size: 1000,
-      });
-      exportObjectsToCsv(
-        "leaves.csv",
-        res.leaves,
-        [
-          { header: "Employee Name", key: "employee_name" },
-          { header: "Employee Code", key: "employee_code" },
-          { header: "Leave Type", key: "leave_type" },
-          { header: "Start Date", key: "start_date" },
-          { header: "End Date", key: "end_date" },
-          { header: "Reason", key: "reason" },
-          { header: "Status", key: "status" },
-          { header: "Applied Date", key: "created_at" },
-        ]
+  const closeDecisionModal = () => {
+    setDecisionModalOpen(false);
+    setDecisionTarget(null);
+    setDecisionReason("");
+    setDecisionError(null);
+  };
+
+  const submitDecision = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!decisionTarget) return;
+    if (!decisionReason.trim()) {
+      setDecisionError(
+        decisionType === "APPROVED"
+          ? "Approval reason is required."
+          : "Rejection reason is required."
       );
-      toastSuccess("Leave data exported successfully.");
+      return;
+    }
+    setDecisionError(null);
+    setDecisionSubmitting(true);
+    try {
+      await leaveService.updateStatus(decisionTarget.leave_id, decisionType, decisionReason.trim());
+      toastSuccess(`Leave ${decisionType.toLowerCase()} successfully.`);
+      closeDecisionModal();
+      await loadLeaves(1);
     } catch (err) {
-      toastApiError(err, "Failed to export leaves");
+      const msg = err instanceof Error ? err.message : "Something went wrong.";
+      setDecisionError(msg);
+      toastApiError(err, `Failed to ${decisionType.toLowerCase()} leave`);
+    } finally {
+      setDecisionSubmitting(false);
     }
   };
 
-  const handleClearFilters = () => {
-    if (canManage && user?._id) {
-      setSelectedEmployee(user._id);
-    } else {
-      setSelectedEmployee("");
-    }
-    setStatusFilter("");
-    setLeaveTypeFilter("");
-    setStartDateFilter("");
-    setEndDateFilter("");
+  const clearFilters = () => {
+    setFilterStatus("");
+    setFilterLeaveType("");
+    setStartDate("");
+    setEndDate("");
+    setSelectedEmployee("");
   };
 
   return (
     <div>
       <PageHeader
-        title={isEmployee ? "My Leaves" : "Leave Management"}
-        subtitle={
-          isEmployee
-            ? "View and manage your leave requests."
-            : "Review and manage employee leave requests."
-        }
+        title="Leaves"
+        subtitle="Manage leave requests."
         actions={
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={handleExport}>Export CSV</Button>
-            <Button onClick={openCreate}>Apply Leave</Button>
-          </div>
+          <Button onClick={openApply}>Apply for Leave</Button>
         }
       />
 
@@ -211,18 +201,32 @@ export function LeavesPage() {
               className="input"
             >
               <option value="">All Employees</option>
-              {activeEmployees.map((emp: Employee) => (
+              {employees.map((emp: Employee) => (
                 <option key={emp.user_id} value={emp.user_id}>
                   {emp.first_name} {emp.last_name}
                 </option>
               ))}
             </select>
           </div>
+          <Input
+            label="Start Date"
+            name="start_date"
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+          />
+          <Input
+            label="End Date"
+            name="end_date"
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+          />
           <div>
             <label className="label">Status</label>
             <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
               className="input"
             >
               <option value="">All Statuses</option>
@@ -234,8 +238,8 @@ export function LeavesPage() {
           <div>
             <label className="label">Leave Type</label>
             <select
-              value={leaveTypeFilter}
-              onChange={(e) => setLeaveTypeFilter(e.target.value)}
+              value={filterLeaveType}
+              onChange={(e) => setFilterLeaveType(e.target.value)}
               className="input"
             >
               <option value="">All Types</option>
@@ -245,72 +249,14 @@ export function LeavesPage() {
               <option value="UNPAID">Unpaid</option>
             </select>
           </div>
-          <Input
-            label="Start Date"
-            name="start_date"
-            type="date"
-            value={startDateFilter}
-            onChange={(e) => setStartDateFilter(e.target.value)}
-          />
-          <Input
-            label="End Date"
-            name="end_date"
-            type="date"
-            value={endDateFilter}
-            onChange={(e) => setEndDateFilter(e.target.value)}
-          />
           <button
-            onClick={() => loadData(1)}
+            onClick={() => loadLeaves(1)}
             className="btn-primary rounded-lg px-4 py-2 text-sm font-medium"
           >
             Apply Filters
           </button>
           <button
-            onClick={handleClearFilters}
-            className="btn-ghost rounded-lg px-4 py-2 text-sm font-medium"
-          >
-            Clear
-          </button>
-        </div>
-      )}
-
-      {isEmployee && (
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
-          <div>
-            <label className="label">Status</label>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="input"
-            >
-              <option value="">All Statuses</option>
-              <option value="PENDING">Pending</option>
-              <option value="APPROVED">Approved</option>
-              <option value="REJECTED">Rejected</option>
-            </select>
-          </div>
-          <Input
-            label="Start Date"
-            name="start_date"
-            type="date"
-            value={startDateFilter}
-            onChange={(e) => setStartDateFilter(e.target.value)}
-          />
-          <Input
-            label="End Date"
-            name="end_date"
-            type="date"
-            value={endDateFilter}
-            onChange={(e) => setEndDateFilter(e.target.value)}
-          />
-          <button
-            onClick={() => loadData(1)}
-            className="btn-primary rounded-lg px-4 py-2 text-sm font-medium"
-          >
-            Apply Filters
-          </button>
-          <button
-            onClick={handleClearFilters}
+            onClick={clearFilters}
             className="btn-ghost rounded-lg px-4 py-2 text-sm font-medium"
           >
             Clear
@@ -329,51 +275,51 @@ export function LeavesPage() {
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50">
               <tr>
-                {!isEmployee && (
-                  <th className="px-4 py-3 text-left font-medium text-slate-500">Employee</th>
-                )}
+                {canManage && <th className="px-4 py-3 text-left font-medium text-slate-500">Employee</th>}
+                <th className="px-4 py-3 text-left font-medium text-slate-500">Dates</th>
                 <th className="px-4 py-3 text-left font-medium text-slate-500">Type</th>
-                <th className="px-4 py-3 text-left font-medium text-slate-500">Start Date</th>
-                <th className="px-4 py-3 text-left font-medium text-slate-500">End Date</th>
+                <th className="px-4 py-3 text-left font-medium text-slate-500">Reason</th>
                 <th className="px-4 py-3 text-left font-medium text-slate-500">Status</th>
-                {canManage && (
-                  <th className="px-4 py-3 text-right font-medium text-slate-500">Actions</th>
-                )}
+                <th className="px-4 py-3 text-left font-medium text-slate-500">Decision Note</th>
+                {canManage && <th className="px-4 py-3 text-right font-medium text-slate-500">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {leaves.map((leave) => (
                 <tr key={leave.leave_id} className="hover:bg-slate-50">
-                  {!isEmployee && (
+                  {canManage && (
                     <td className="px-4 py-3 font-medium text-slate-900">
-                      {leave.employee_name || employees.find((e: Employee) => e.user_id === leave.employee_id)?.first_name || leave.employee_id}
+                      {leave.employee_name || leave.employee_id}
                     </td>
                   )}
+                  <td className="px-4 py-3 text-slate-600">
+                    {leave.start_date} → {leave.end_date}
+                  </td>
                   <td className="px-4 py-3 text-slate-600">{leave.leave_type}</td>
-                  <td className="px-4 py-3 text-slate-600">{formatDate(leave.start_date)}</td>
-                  <td className="px-4 py-3 text-slate-600">{formatDate(leave.end_date)}</td>
+                  <td className="px-4 py-3 text-slate-600">{leave.reason || "—"}</td>
                   <td className="px-4 py-3">
                     <StatusBadge status={leave.status} />
                   </td>
-                  {canManage && (
+                  <td className="px-4 py-3 text-slate-600">
+                    {leave.status === "APPROVED" && (leave.approval_reason || "—")}
+                    {leave.status === "REJECTED" && (leave.rejection_reason || "—")}
+                    {leave.status === "PENDING" && "—"}
+                  </td>
+                  {canManage && leave.status === "PENDING" && (
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
-                        {leave.status === "PENDING" && (
-                          <>
-                            <button
-                              onClick={() => setConfirmAction({ leave, action: "APPROVED" })}
-                              className="rounded border border-green-200 px-2 py-1 text-xs font-medium text-green-600 hover:bg-green-50"
-                            >
-                              Approve
-                            </button>
-                            <button
-                              onClick={() => setConfirmAction({ leave, action: "REJECTED" })}
-                              className="rounded border border-red-200 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
-                            >
-                              Reject
-                            </button>
-                          </>
-                        )}
+                        <button
+                          onClick={() => openDecisionModal(leave, "APPROVED")}
+                          className="rounded border border-green-300 px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-50"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => openDecisionModal(leave, "REJECTED")}
+                          className="rounded border border-red-300 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
+                        >
+                          Reject
+                        </button>
                       </div>
                     </td>
                   )}
@@ -384,130 +330,155 @@ export function LeavesPage() {
         </div>
       )}
 
-      {total_pages > 1 && (
+      {totalPages > 1 && (
         <Pagination
           page={page}
-          totalPages={total_pages}
-          totalRecords={total_records}
-          onPageChange={(nextPage) => loadData(nextPage)}
+          totalPages={totalPages}
+          totalRecords={totalRecords}
+          onPageChange={(nextPage) => loadLeaves(nextPage)}
         />
       )}
 
-      <Modal
-        open={modalOpen}
-        title="Apply for leave"
-        onClose={() => setModalOpen(false)}
-      >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {formError ? (
-            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{formError}</div>
-          ) : null}
-
-          {canManage && (
-            <div>
-              <label className="label" htmlFor="employee_id">
-                Employee
-              </label>
-              <select
-                id="employee_id"
-                name="employee_id"
-                value={form.employee_id}
-                onChange={(e) => setForm({ ...form, employee_id: e.target.value })}
-                className="input"
+      {modalOpen && (
+        <Modal
+          open={modalOpen}
+          title="Apply for Leave"
+          onClose={() => setModalOpen(false)}
+        >
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {formError ? (
+              <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{formError}</div>
+            ) : null}
+            {!isEmployee && (
+              <div>
+                <label className="label">Employee</label>
+                <select
+                  value={form.employee_id}
+                  onChange={(e) => setForm({ ...form, employee_id: e.target.value })}
+                  className="input"
+                  required
+                >
+                  <option value="">Select employee</option>
+                  {employees.map((emp: Employee) => (
+                    <option key={emp.user_id} value={emp.user_id}>
+                      {emp.first_name} {emp.last_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="Start Date"
+                name="start_date"
+                type="date"
+                value={form.start_date}
+                onChange={(e) => setForm({ ...form, start_date: e.target.value })}
                 required
+              />
+              <Input
+                label="End Date"
+                name="end_date"
+                type="date"
+                value={form.end_date}
+                onChange={(e) => setForm({ ...form, end_date: e.target.value })}
+                required
+              />
+            </div>
+            <div>
+              <label className="label">Leave Type</label>
+              <select
+                value={form.leave_type}
+                onChange={(e) => setForm({ ...form, leave_type: e.target.value })}
+                className="input"
               >
-                <option value="">Select employee</option>
-                {activeEmployees.map((emp: Employee) => (
-                  <option key={emp.user_id} value={emp.user_id}>
-                    {emp.first_name} {emp.last_name}
-                  </option>
-                ))}
+                <option value="ANNUAL">Annual</option>
+                <option value="SICK">Sick</option>
+                <option value="CASUAL">Casual</option>
+                <option value="UNPAID">Unpaid</option>
               </select>
             </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Start Date"
-              name="start_date"
-              type="date"
-              value={form.start_date}
-              onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-              required
+              label="Reason (optional)"
+              name="reason"
+              value={form.reason}
+              onChange={(e) => setForm({ ...form, reason: e.target.value })}
             />
-            <Input
-              label="End Date"
-              name="end_date"
-              type="date"
-              value={form.end_date}
-              onChange={(e) => setForm({ ...form, end_date: e.target.value })}
-              required
-            />
-          </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="ghost" onClick={() => setModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" loading={submitting}>
+                Apply
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
 
-          <div>
-            <label className="label" htmlFor="leave_type">
-              Leave Type
-            </label>
-            <select
-              id="leave_type"
-              name="leave_type"
-              value={form.leave_type}
-              onChange={(e) => setForm({ ...form, leave_type: e.target.value })}
-              className="input"
-            >
-              <option value="ANNUAL">Annual</option>
-              <option value="SICK">Sick</option>
-              <option value="CASUAL">Casual</option>
-              <option value="UNPAID">Unpaid</option>
-            </select>
-          </div>
+      {decisionModalOpen && decisionTarget && (
+        <Modal
+          open={decisionModalOpen}
+          title={decisionType === "APPROVED" ? "Approve Leave" : "Reject Leave"}
+          onClose={closeDecisionModal}
+        >
+          <form onSubmit={submitDecision} className="space-y-4">
+            {decisionError ? (
+              <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{decisionError}</div>
+            ) : null}
 
-          <Input
-            label="Reason (optional)"
-            name="reason"
-            value={form.reason}
-            onChange={(e) => setForm({ ...form, reason: e.target.value })}
-          />
+            <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
+              <p>
+                <strong>Employee:</strong> {decisionTarget.employee_name || decisionTarget.employee_id}
+              </p>
+              <p>
+                <strong>Dates:</strong> {decisionTarget.start_date} → {decisionTarget.end_date}
+              </p>
+              <p>
+                <strong>Type:</strong> {decisionTarget.leave_type}
+              </p>
+              {decisionTarget.reason ? (
+                <p>
+                  <strong>Applicant Reason:</strong> {decisionTarget.reason}
+                </p>
+              ) : null}
+            </div>
 
-          <div className="flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setModalOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" loading={submitting}>
-              Apply leave
-            </Button>
-          </div>
-        </form>
-      </Modal>
+            <div>
+              <label className="label" htmlFor="decision_reason">
+                {decisionType === "APPROVED" ? "Approval reason" : "Rejection reason"}
+              </label>
+              <textarea
+                id="decision_reason"
+                name="decision_reason"
+                rows={4}
+                value={decisionReason}
+                onChange={(e) => setDecisionReason(e.target.value)}
+                className="input"
+                required
+                placeholder={
+                  decisionType === "APPROVED"
+                    ? "e.g. Approved as per policy. Enjoy your leave!"
+                    : "e.g. Insufficient leave balance for the requested period."
+                }
+              />
+            </div>
 
-      <Modal
-        open={confirmAction !== null}
-        title={confirmAction?.action === "APPROVED" ? "Approve leave" : "Reject leave"}
-        onClose={() => setConfirmAction(null)}
-      >
-        <p className="text-sm text-slate-600">
-          {confirmAction?.action === "APPROVED"
-            ? `Approve leave request for ${confirmAction?.leave.employee_name || "employee"}?`
-            : `Reject leave request for ${confirmAction?.leave.employee_name || "employee"}?`}
-        </p>
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="ghost" onClick={() => setConfirmAction(null)}>
-            Cancel
-          </Button>
-          <Button
-            variant={confirmAction?.action === "APPROVED" ? "primary" : "danger"}
-            loading={actionLoading}
-            onClick={handleConfirmAction}
-          >
-            {confirmAction?.action === "APPROVED" ? "Approve" : "Reject"}
-          </Button>
-        </div>
-      </Modal>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="ghost" onClick={closeDecisionModal}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                loading={decisionSubmitting}
+                variant={decisionType === "APPROVED" ? "primary" : "danger"}
+              >
+                {decisionType === "APPROVED" ? "Approve Leave" : "Reject Leave"}
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   );
 }

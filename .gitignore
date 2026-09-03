@@ -41,7 +41,6 @@ yarn-error.log*
 # Environment files (NEVER commit secrets)
 .env
 .env.*
-!.env.example
 
 # Local caches
 .cache/

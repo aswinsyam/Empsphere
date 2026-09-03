@@ -9,9 +9,9 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { employeeService } from "@/services/employee.service";
-import { useEmployees } from "@/hooks/useEmployees";
-import { useDepartments } from "@/hooks/useDepartments";
-import { useDesignations } from "@/hooks/useDesignations";
+import { departmentService } from "@/services/department.service";
+import { designationService } from "@/services/designation.service";
+import { useResource } from "@/hooks/useResource";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/common/Button";
@@ -41,9 +41,9 @@ export function EmployeeDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { update: updateEmployee } = useEmployees();
-  const { departments, list: listDepartments } = useDepartments();
-  const { designations, list: listDesignations } = useDesignations();
+  const { update: updateEmployee } = useResource<Employee>(employeeService, "employees", "user_id");
+  const { items: departments, list: listDepartments } = useResource<Department>(departmentService, "departments", "department_id");
+  const { items: designations, list: listDesignations } = useResource<Designation>(designationService, "designations", "designation_id");
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

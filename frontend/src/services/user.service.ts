@@ -3,8 +3,6 @@
  */
 
 import { http } from "./api";
-import { api } from "@/config/axios";
-import { ApiResponse } from "@/types/api";
 import { UserProfile } from "@/types/user";
 
 /** Editable profile fields for the current user. */
@@ -30,13 +28,7 @@ export const userService = {
   async uploadProfileImage(file: File): Promise<UserProfile> {
     const formData = new FormData();
     formData.append("profile_image", file);
-    // Use the raw `api` instance here so Axios does not serialize
-    // the FormData body as JSON; the multipart boundary is required.
-    const res = await api.post<ApiResponse<UserProfile>>(
-      "/auth/profile/image/",
-      formData
-    );
-    return res.data.data;
+    return http.post<UserProfile>("/auth/profile/image/", formData);
   },
 
   /** Change the current user's password. */

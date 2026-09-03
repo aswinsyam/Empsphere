@@ -53,24 +53,24 @@ export interface PaymentListResponse {
   page_size: number;
 }
 
-/** Payment creation payload. */
+/** Payment creation payload (Razorpay only — no gateway field). */
 export interface CreatePaymentPayload {
   employee_id?: string;
   amenity_id: string;
 }
 
-/** Payment verification payload. */
+/** Razorpay Checkout response after a successful payment. */
 export interface VerifyPaymentPayload {
-  gateway_order_id: string;
-  gateway_payment_id: string;
-  payment_status?: string;
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
 }
 
-/** Payment order response from backend. */
+/** Razorpay order response from the backend. */
 export interface PaymentOrderResponse {
   payment_id: string;
   order_id: string;
-  payment_session_id: string;
   amount: number;
   currency: string;
+  key_id: string;
 }

@@ -2,19 +2,17 @@
  * DepartmentsPage.
  *
  * Lists active departments in a table and lets SUPER_ADMIN / ADMIN /
- * HR_MANAGER create, edit, or soft-delete departments via the reusable
- * `DepartmentFormModal` and a confirmation dialog (deletion only deactivates
- * the record and preserves historical employee references).
+ * HR_MANAGER create, edit, or soft-delete departments.
  */
 
 import { useEffect, useState } from "react";
-import { useDepartments } from "@/hooks/useDepartments";
 import { useAuth } from "@/hooks/useAuth";
+import { departmentService } from "@/services/department.service";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/common/Button";
 import { Input } from "@/components/common/Input";
-import { Loader } from "@/components/common/Loader";
 import { Modal } from "@/components/common/Modal";
+import { Loader } from "@/components/common/Loader";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { Pagination } from "@/components/common/Pagination";
 import { cn } from "@/utils/helpers";
@@ -23,7 +21,6 @@ import { DepartmentFormModal } from "@/components/departments/DepartmentFormModa
 import { canManageEmployees } from "@/utils/constants";
 import { toastSuccess, toastApiError } from "@/components/common/ToastProvider";
 
-// Empty form shape.
 const EMPTY_FORM = {
   name: "",
   code: "",
@@ -32,19 +29,15 @@ const EMPTY_FORM = {
 };
 
 export function DepartmentsPage() {
-  const {
-    departments,
-    total_records,
-    total_pages,
-    page,
-    page_size,
-    loading,
-    error,
-    list,
-    create,
-    update,
-  } = useDepartments();
   const { user } = useAuth();
+
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [search, setSearch] = useState("");
 
   const canManage = canManageEmployees(user?.role);
 
@@ -53,13 +46,33 @@ export function DepartmentsPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
   const [confirmStatus, setConfirmStatus] = useState<Department | null>(null);
   const [statusLoading, setStatusLoading] = useState(false);
 
+  const loadDepartments = async (pageNum = 1) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await departmentService.list({
+        search: search || undefined,
+        page: pageNum,
+        page_size: 10,
+        include_inactive: true,
+      });
+      setDepartments(result.departments);
+      setPage(result.page);
+      setTotalPages(result.total_pages);
+      setTotalRecords(result.total_records);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load departments");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    list({ search: search || undefined, page: 1, page_size: 10, include_inactive: true });
-  }, [search, list]);
+    loadDepartments(1);
+  }, [search]);
 
   const openCreate = () => {
     setEditing(null);
@@ -86,7 +99,7 @@ export function DepartmentsPage() {
     setSubmitting(true);
     try {
       if (editing) {
-        await update(editing.department_id, {
+        await departmentService.update(editing.department_id, {
           name: form.name,
           code: form.code,
           description: form.description,
@@ -94,7 +107,7 @@ export function DepartmentsPage() {
         });
         toastSuccess("Department updated successfully.");
       } else {
-        await create({
+        await departmentService.create({
           name: form.name,
           code: form.code,
           description: form.description,
@@ -102,14 +115,10 @@ export function DepartmentsPage() {
         toastSuccess("Department created successfully.");
       }
       setModalOpen(false);
-      await list({ search: search || undefined, page: 1, page_size: 10, include_inactive: true });
+      await loadDepartments(1);
     } catch (err) {
       toastApiError(err, "Failed to save department");
-      setFormError(
-        err && typeof err === "object" && "message" in err
-          ? String((err as { message: string }).message)
-          : "Something went wrong."
-      );
+      setFormError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setSubmitting(false);
     }
@@ -120,10 +129,10 @@ export function DepartmentsPage() {
     const newStatus = !confirmStatus.is_active;
     setStatusLoading(true);
     try {
-      await update(confirmStatus.department_id, { is_active: newStatus });
+      await departmentService.update(confirmStatus.department_id, { is_active: newStatus });
       toastSuccess(newStatus ? "Department activated successfully." : "Department deactivated successfully.");
       setConfirmStatus(null);
-      await list({ search: search || undefined, page: 1, page_size: 10, include_inactive: true });
+      await loadDepartments(1);
     } catch (err) {
       toastApiError(err, newStatus ? "Failed to activate department" : "Failed to deactivate department");
     } finally {
@@ -183,7 +192,7 @@ export function DepartmentsPage() {
               {departments.map((dept) => (
                 <tr key={dept.department_id} className="hover:bg-slate-50">
                   <td className="px-4 py-3 font-medium text-slate-900">{dept.name}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-slate-600">
                     <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
                       {dept.code}
                     </span>
@@ -223,19 +232,12 @@ export function DepartmentsPage() {
         </div>
       )}
 
-      {total_pages > 1 && (
+      {totalPages > 1 && (
         <Pagination
           page={page}
-          totalPages={total_pages}
-          totalRecords={total_records}
-          onPageChange={(nextPage) =>
-            list({
-              search: search || undefined,
-              page: nextPage,
-              page_size,
-              include_inactive: true,
-            })
-          }
+          totalPages={totalPages}
+          totalRecords={totalRecords}
+          onPageChange={(nextPage) => loadDepartments(nextPage)}
         />
       )}
 

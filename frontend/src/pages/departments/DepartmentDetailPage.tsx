@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { departmentService } from "@/services/department.service";
 import { employeeService } from "@/services/employee.service";
 import { useAuth } from "@/hooks/useAuth";
-import { useDepartments } from "@/hooks/useDepartments";
+import { useResource } from "@/hooks/useResource";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/common/Button";
 import { Loader } from "@/components/common/Loader";
@@ -27,7 +27,7 @@ export function DepartmentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { update: updateDepartment } = useDepartments();
+  const { update: updateDepartment } = useResource<Department>(departmentService, "departments", "department_id");
   const [department, setDepartment] = useState<Department | null>(null);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
