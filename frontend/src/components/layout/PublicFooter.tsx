@@ -18,6 +18,7 @@ const LEGAL_LINKS = [
   { to: "/terms", label: "Terms & Conditions" },
   { to: "/privacy", label: "Privacy Policy" },
   { to: "/cancellation-refund", label: "Cancellation & Refund Policy" },
+  { to: "/shipping-policy", label: "Shipping Policy" },
 ];
 
 export function PublicFooter() {

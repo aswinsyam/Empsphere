@@ -39,6 +39,7 @@ import { ContactPage } from "@/pages/public/ContactPage";
 import { TermsPage } from "@/pages/public/TermsPage";
 import { PrivacyPage } from "@/pages/public/PrivacyPage";
 import { CancellationRefundPage } from "@/pages/public/CancellationRefundPage";
+import { ShippingPolicyPage } from "@/pages/public/ShippingPolicyPage";
 import { ROLES, EMPLOYEE_MANAGEMENT_ROLES } from "@/utils/constants";
 
 export function AppRoutes() {
@@ -175,6 +176,7 @@ export function AppRoutes() {
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/cancellation-refund" element={<CancellationRefundPage />} />
+      <Route path="/shipping-policy" element={<ShippingPolicyPage />} />
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
