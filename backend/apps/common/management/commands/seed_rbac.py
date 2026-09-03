@@ -9,7 +9,7 @@ from datetime import datetime
 
 from django.core.management.base import BaseCommand
 
-from apps.common.constants import Collections, Role, ROLE_NAMES
+from apps.common.constants import Collections
 from apps.common.database import mongo
 from apps.common.utils import hash_password
 
@@ -35,16 +35,15 @@ class Command(BaseCommand):
         employee_code = os.getenv("SUPER_ADMIN_EMPLOYEE_CODE", "EMP001")
 
         # ---- Seed roles ----
-        role_col = db[Collections.ROLES]
+        role_col = db["roles"]
         role_count = 0
-        for role in Role:
-            name = ROLE_NAMES[role]
+        for name in ["EMPLOYEE", "HR_MANAGER", "ADMIN", "SUPER_ADMIN"]:
             role_col.update_one(
                 {"name": name},
                 {
                     "$setOnInsert": {
                         "name": name,
-                        "code": role.value,
+                        "code": role_count + 1,
                         "description": "%s role" % name,
                         "is_active": True,
                         "is_deleted": False,
@@ -75,7 +74,7 @@ class Command(BaseCommand):
                     "email": email.lower(),
                     "phone": "",
                     "password": hash_password(password),
-                    "role": ROLE_NAMES[Role.SUPER_ADMIN],
+                    "role": "SUPER_ADMIN",
                     "department_id": None,
                     "designation_id": None,
                     "profile_image": "",

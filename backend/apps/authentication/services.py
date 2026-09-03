@@ -12,7 +12,6 @@ This module contains all authentication business logic in one place:
 """
 
 import logging
-import re
 import secrets
 import uuid
 from datetime import datetime, timedelta

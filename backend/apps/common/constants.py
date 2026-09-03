@@ -14,8 +14,6 @@ class Collections:
     """MongoDB collection names."""
 
     USERS = "users"
-    ROLES = "roles"
-    PERMISSIONS = "permissions"
     TOKENS = "tokens"
     OTPS = "otps"
 
@@ -68,22 +66,4 @@ PASSWORD_RULE_MESSAGE = (
 )
 
 
-# =========================================================
-# Roles
-# =========================================================
 
-class Role(IntEnum):
-    """System roles ordered by privilege."""
-
-    EMPLOYEE = 1
-    HR_MANAGER = 2
-    ADMIN = 3
-    SUPER_ADMIN = 4
-
-
-ROLE_NAMES = {
-    Role.EMPLOYEE: "EMPLOYEE",
-    Role.HR_MANAGER: "HR_MANAGER",
-    Role.ADMIN: "ADMIN",
-    Role.SUPER_ADMIN: "SUPER_ADMIN",
-}
